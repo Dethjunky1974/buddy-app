@@ -11,7 +11,7 @@
   [![Local first](https://img.shields.io/badge/data-local%20first-22272A?style=flat-square)](#choose-your-vault)
 </div>
 
-Buddy brings the real **Codex** and **Claude Code** CLIs into two interactive panes with one shared prompt composer. Send a prompt to either agent or both. Browse installed skills and commands, improve a draft prompt with AI, and choose a model and effort level for each agent.
+Buddy brings the real **Codex** and **Claude Code** CLIs into two interactive panes with one shared prompt composer. Send a prompt to either agent or both. Optionally link the agents so they can exchange messages in the same workspace. Browse installed skills and commands, improve a draft prompt with AI, and choose a model and effort level for each agent.
 
 Buddy runs on your Mac. It opens at `http://127.0.0.1:4317/`, with a Dock icon and a menu bar control. The local server starts when you log in, so you install once and then just click Buddy or open the URL.
 
@@ -71,6 +71,7 @@ Use the **+** beside the project picker to create a project directly in Buddy. I
 ## What is inside
 
 - **One composer, three destinations:** Codex, Claude Code, or both. Enter sends; Shift+Enter adds a new line.
+- **Optional Linked switch:** when both terminals are connected, turn on Linked beside the destination buttons. Either agent can message the other through Buddy's built-in local bridge; Buddy wakes the recipient and reports a reply timeout. The switch is off by default and needs no separate app or setup step. You still choose Codex, Claude Code, or Both for each prompt.
 - **Real interactive terminals:** native CLI prompts, permissions, and keyboard controls remain available.
 - **Command library:** each agent pane opens its own installed skills, plugins, and project commands; choose an invocation before sending.
 - **Prompt improvement:** click Improve prompt to rewrite the full draft with Codex or Claude Code, then review it before accepting.
