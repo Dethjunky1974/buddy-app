@@ -47,8 +47,7 @@
 .link-agents:hover{background:linear-gradient(180deg,#39443d,#27332b);border-color:#78917e;color:#f4f8f4}.link-agents:active{transform:scale(.96)}.link-agents:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .link-switch{display:flex;align-items:center;width:27px;height:16px;margin-left:2px;padding:2px;border:1px solid #64736b;border-radius:999px;background:linear-gradient(180deg,#202724,#333c36);box-shadow:inset 0 1px 3px #000b,inset 0 -1px #ffffff0d;transition:background .16s var(--ease),border-color .16s var(--ease)}
 .link-switch span{width:10px;height:10px;border-radius:50%;background:linear-gradient(145deg,#e1e6df,#aab6ac);box-shadow:inset 0 1px #ffffffb8,0 1px 3px #000b;transition:transform .16s var(--ease),background .16s var(--ease)}
-.link-agents[aria-pressed="true"]{color:#d9f5df;border-color:#679e79;background:linear-gradient(180deg,#304f3b,#21372a);box-shadow:inset 0 1px #ffffff26,0 2px 6px #0006,0 0 0 1px #76d89918}.link-agents[aria-pressed="true"] .link-glyph{color:#a6e7b8}
-.link-agents[aria-pressed="true"] .link-switch{background:linear-gradient(180deg,#4a9a65,#32734a);border-color:#91dbaa;box-shadow:inset 0 1px 3px #173c27,0 0 8px #75d89736}.link-agents[aria-pressed="true"] .link-switch span{transform:translateX(11px);background:linear-gradient(145deg,#fff,#ddf8e4)}
-.pane-grid.linked .pane{border-color:#50695a}
+.link-agents[aria-pressed="true"]{color:#ead7be;border-color:#9a7956;background:linear-gradient(180deg,#3d362e,#2b2925);box-shadow:inset 0 1px #ffffff25,0 2px 6px #0007,0 0 0 1px #d2aa7e16}.link-agents[aria-pressed="true"] .link-glyph{color:#d7b38c}
+.link-agents[aria-pressed="true"] .link-switch{background:linear-gradient(180deg,#9b7650,#70563d);border-color:#c7a078;box-shadow:inset 0 1px 3px #35261b,0 0 7px #d2aa7e2e}.link-agents[aria-pressed="true"] .link-switch span{transform:translateX(11px);background:linear-gradient(145deg,#fffaf1,#e9d5bb)}
 @media(max-width:520px){.composer-top{align-items:flex-start}.composer-routing{gap:5px;flex-wrap:wrap}.link-agents{padding:0 8px}}
 @media(prefers-reduced-motion:reduce){.link-agents,.link-switch,.link-switch span{transition:none}}
