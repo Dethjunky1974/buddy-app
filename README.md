@@ -47,6 +47,8 @@ For GitHub mode, create a **private repository with an initial commit** first an
 
 Buddy never needs your vault to run the CLIs. With a vault connected, selecting a project adds its current `hot.md` and `index.md` to the prompt. Session records include the prompt and a short terminal excerpt; keep sensitive text out of the composer if you do not want it recorded in your vault.
 
+Use the **+** beside the project picker to create a project directly in Buddy. It starts with `index.md` and `hot.md`; GitHub vaults publish the new project to your shared repository.
+
 ## What is inside
 
 - **One composer, three destinations:** Codex, Claude Code, or both. Enter sends; Shift+Enter adds a new line.

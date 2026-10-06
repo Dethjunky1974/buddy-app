@@ -24,7 +24,7 @@ const state = {
   workspace: localStorage.getItem('buddy-workspace') || '',
   settings: { codex: savedSettings('codex'), claude: savedSettings('claude') }, modelDialogEngine: 'codex',
   vault: { mode: 'none', name: '', path: '', remote: '' }, vaultSyncOk: true,
-  running: { codex: false, claude: false }
+  running: { codex: false, claude: false }, retries: { codex: 0, claude: 0 }
 };
 const toast = (message, error = false) => {
   const el = $('toast'); el.textContent = message; el.classList.toggle('error', error); el.classList.add('show');
@@ -73,6 +73,32 @@ async function loadProjects() {
     await refreshContext();
   } catch (error) { setVaultStatus({ ok: false, error: error.message }); }
 }
+function openNewProject() {
+  $('projectName').value = '';
+  $('projectError').hidden = true;
+  $('projectDialog').showModal();
+  $('projectName').focus();
+}
+async function createNewProject() {
+  const button = $('createProject');
+  if (button.disabled) return;
+  $('projectError').hidden = true;
+  button.disabled = true;
+  try {
+    const result = await api('/api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: $('projectName').value }) });
+    state.project = result.name;
+    localStorage.setItem('buddy-project', state.project);
+    $('projectDialog').close();
+    await loadProjects();
+    if (![...$('project').options].some(option => option.value === result.name)) $('project').add(new Option(result.name, result.name));
+    $('project').value = result.name;
+    await refreshContext();
+    toast(result.error ? `Project created locally; GitHub sync needs attention: ${result.error}` : `Project "${result.name}" created`, !!result.error);
+  } catch (error) {
+    $('projectError').textContent = error.message;
+    $('projectError').hidden = false;
+  } finally { button.disabled = false; }
+}
 function setVaultStatus(sync) {
   const el = $('vaultStatus');
   el.classList.toggle('bad', !sync?.ok);
@@ -86,6 +112,7 @@ function renderVault() {
   $('vaultLabel').textContent = vault.mode === 'none' ? 'VAULT · OPTIONAL' : `${vault.name.toUpperCase()} · ${vault.mode === 'github' ? 'GITHUB' : 'LOCAL'}`;
   $('vaultPath').textContent = vault.mode === 'none' ? 'Add an Obsidian vault if you want shared project context.' : vault.path;
   $('project').disabled = vault.mode === 'none';
+  $('newProject').disabled = vault.mode === 'none';
   $('vaultHelp').textContent = vault.mode === 'none' ? 'Prompts work without a vault. Session records stay on this Mac.' : 'Current project notes are included when you send. Sessions save to this vault.';
 }
 async function refreshContext() {
@@ -115,7 +142,8 @@ function createTerminal(engine) {
   new ResizeObserver(() => { try { fit.fit(); resize(engine); } catch {} }).observe($(`${engine}Terminal`));
   connect(engine);
 }
-function connect(engine) {
+function connect(engine, retry = false) {
+  if (!retry) state.retries[engine] = 0;
   state.sockets[engine]?.close();
   state.running[engine] = false;
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -130,7 +158,16 @@ function connect(engine) {
     if (msg.type === 'data') state.terms[engine].write(msg.data);
     if (msg.type === 'error') toast(`${engine}: ${msg.error}`, true);
     if (msg.type === 'session') { state.running[engine] = !!msg.running; $(`${engine}State`).textContent = msg.running ? 'Ready' : 'Exited'; updateConnection(); }
-    if (msg.type === 'exit') { state.running[engine] = false; $(`${engine}State`).textContent = `Exited ${msg.exitCode}`; updateConnection(); }
+    if (msg.type === 'exit') {
+      state.running[engine] = false;
+      if (msg.recoverable && state.retries[engine] < 1) {
+        state.retries[engine]++;
+        $(`${engine}State`).textContent = 'Retrying startup';
+        toast('Codex startup timed out. Retrying once…', true);
+        setTimeout(() => { if (state.sockets[engine] === ws) connect(engine, true); }, 1500);
+      } else $(`${engine}State`).textContent = `Exited ${msg.exitCode}`;
+      updateConnection();
+    }
     if (msg.type === 'save') {
       const r = msg.result;
       if (r.queued) $('retrySaves').hidden = false;
@@ -348,6 +385,10 @@ function bind() {
   document.querySelectorAll('[data-skill-engine]').forEach(button => button.onclick = () => { state.skillEngine = button.dataset.skillEngine; state.selectedSkill = null; document.querySelectorAll('[data-skill-engine]').forEach(b => b.classList.toggle('active', b === button)); renderSkills(); });
   $('applyWorkspace').onclick = async () => { state.workspace = $('workspace').value.trim(); localStorage.setItem('buddy-workspace', state.workspace); await refreshCatalog(); for (const engine of ['codex', 'claude']) { state.terms[engine].clear(); connect(engine); } };
   $('project').onchange = refreshContext; $('refreshContext').onclick = loadProjects;
+  $('newProject').onclick = openNewProject;
+  $('closeProject').onclick = $('cancelProject').onclick = () => $('projectDialog').close();
+  $('createProject').onclick = createNewProject;
+  $('projectName').onkeydown = event => { if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); createNewProject(); } };
   $('configureVault').onclick = openVaultSettings;
   $('vaultModeInput').onchange = updateVaultFields;
   $('closeVault').onclick = $('cancelVault').onclick = () => $('vaultDialog').close();

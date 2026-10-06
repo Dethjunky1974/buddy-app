@@ -15,6 +15,7 @@ test('optional, local, and GitHub-backed vault modes keep records in the right p
   const payload = { project: 'Demo', engine: 'codex', prompt: 'Check the layout', output: 'Looks good', commands: ['$impeccable polish'] };
 
   assert.equal(vault.vaultSettings().mode, 'none');
+  assert.throws(() => vault.createProject('Demo'), /Connect a vault/);
   const localOnly = vault.saveRecord(payload);
   assert.equal(localOnly.saved, true);
   assert.equal(localOnly.location, 'local');
@@ -22,9 +23,15 @@ test('optional, local, and GitHub-backed vault modes keep records in the right p
 
   const folder = path.join(temp, 'My Vault');
   assert.equal(vault.configureVault({ mode: 'local', name: 'Studio Notes', path: folder }).name, 'Studio Notes');
+  const localProject = vault.createProject('New Project');
+  assert.equal(localProject.created, true);
+  assert.equal(localProject.published, false);
+  assert.match(fs.readFileSync(path.join(folder, 'Projects/New Project/index.md'), 'utf8'), /Overview/);
+  assert.throws(() => vault.createProject('new project'), /already exists/i);
+  assert.throws(() => vault.createProject('../escape'), /project name/i);
   fs.mkdirSync(path.join(folder, 'Projects/Demo'), { recursive: true });
   fs.writeFileSync(path.join(folder, 'Projects/Demo/hot.md'), '# Fresh context\n');
-  assert.deepEqual(vault.projects().projects, ['Demo']);
+  assert.deepEqual(vault.projects().projects, ['Demo', 'New Project']);
   assert.match(vault.projectContext('Demo').context, /Fresh context/);
   const localVault = vault.saveRecord(payload);
   assert.equal(localVault.location, 'vault');
@@ -39,12 +46,22 @@ test('optional, local, and GitHub-backed vault modes keep records in the right p
   git(folder, 'add', '.'); git(folder, 'commit', '-m', 'Start vault');
   git(folder, 'remote', 'add', 'origin', remote); git(folder, 'push', '-u', 'origin', 'main');
   fs.writeFileSync(configFile, JSON.stringify({ mode: 'github', name: 'Studio Notes', path: folder, remote: '' }));
+  const sharedProject = vault.createProject('Shared Project');
+  assert.equal(sharedProject.published, true, sharedProject.error);
+  assert.equal(git(folder, 'rev-parse', 'HEAD'), git(folder, 'rev-parse', 'origin/main'));
   const shared = vault.saveRecord(payload);
   assert.equal(shared.published, true, shared.error);
   assert.equal(git(folder, 'rev-parse', 'HEAD'), git(folder, 'rev-parse', 'origin/main'));
   assert.equal(git(folder, 'log', '-1', '--format=%(trailers:key=Sync-Actor,valueonly)'), 'buddy');
 
   const rejectPush = path.join(remote, 'hooks/pre-receive');
+  fs.writeFileSync(rejectPush, '#!/bin/sh\nexit 1\n');
+  fs.chmodSync(rejectPush, 0o755);
+  const unpublishedProject = vault.createProject('Offline Project');
+  assert.equal(unpublishedProject.created, true);
+  assert.equal(unpublishedProject.published, false);
+  fs.unlinkSync(rejectPush);
+  assert.equal(vault.syncVault().status, 'published_pending');
   fs.writeFileSync(rejectPush, '#!/bin/sh\nexit 1\n');
   fs.chmodSync(rejectPush, 0o755);
   const unpublished = vault.saveRecord(payload);

@@ -26,7 +26,7 @@ function publishOwnPending(vaultPath, branch, remote) {
   const commits = git(vaultPath, 'log', `${remote}..HEAD`, '--format=%B%x00').split('\0').map(text => text.trim()).filter(Boolean);
   const files = git(vaultPath, 'diff', '--name-only', `${remote}..HEAD`).trim().split('\n').filter(Boolean);
   if (!commits.length || !commits.every(text => /^Sync-Actor: buddy$/m.test(text))) return false;
-  if (!files.length || !files.every(file => file.startsWith('Tooling/Buddy/'))) return false;
+  if (!files.length || !files.every(file => file.startsWith('Tooling/Buddy/') || /^Projects\/[^/]+\/(?:index|hot)\.md$/.test(file))) return false;
   git(vaultPath, 'push', 'origin', `HEAD:${branch}`);
   return true;
 }
@@ -100,6 +100,40 @@ export function projects() {
   const list = fs.existsSync(root) ? fs.readdirSync(root, { withFileTypes: true })
     .filter(e => e.isDirectory() && !e.name.startsWith('.')).map(e => e.name).sort((a, b) => a.localeCompare(b)) : [];
   return { sync, projects: list };
+}
+
+export function createProject(rawName) {
+  const settings = vaultSettings();
+  if (settings.mode === 'none') throw new Error('Connect a vault before creating a project.');
+  const name = String(rawName || '').trim();
+  if (!name || name.length > 80 || name.startsWith('.') || /[\\/<>:"|?*\x00-\x1f]/.test(name) || name.endsWith('.'))
+    throw new Error('Use a project name of up to 80 characters without path characters.');
+  const sync = syncVault();
+  if (!sync.ok) throw new Error(sync.error || 'Vault sync needs attention before creating a project.');
+  const root = path.join(settings.path, 'Projects');
+  fs.mkdirSync(root, { recursive: true });
+  if (fs.readdirSync(root).some(entry => entry.toLocaleLowerCase() === name.toLocaleLowerCase()))
+    throw new Error('A project with this name already exists.');
+  const folder = path.join(root, name);
+  fs.mkdirSync(folder);
+  const date = new Date().toISOString().slice(0, 10);
+  const index = path.join(folder, 'index.md');
+  const hot = path.join(folder, 'hot.md');
+  fs.writeFileSync(index, `---\ntitle: ${JSON.stringify(name)}\ntype: index\ncreated: ${date}\nupdated: ${date}\ntags: [project]\nrelated: []\n---\n\n# ${name}\n\n## Overview\n\nAdd the project's purpose, links, and decisions here.\n`, { flag: 'wx' });
+  fs.writeFileSync(hot, `---\ntitle: ${JSON.stringify(name + ' — Current context')}\ntype: current-context\ncreated: ${date}\nupdated: ${date}\ntags: [project, current-context]\nrelated: [${JSON.stringify(name + '/index')}]\n---\n\n# ${name} — Current context\n\n## Current focus\n\nAdd the latest priorities and open questions here.\n`, { flag: 'wx' });
+  if (settings.mode !== 'github') return { created: true, published: false, name, files: [index, hot] };
+  try {
+    git(settings.path, 'add', '--', path.relative(settings.path, index), path.relative(settings.path, hot));
+    git(settings.path, 'commit', '-m', `Buddy: create project ${name}`, '-m', `Sync-Actor: buddy\nSync-Machine: ${machine}`);
+    const branch = git(settings.path, 'branch', '--show-current');
+    git(settings.path, 'fetch', 'origin', branch);
+    if (git(settings.path, 'rev-parse', `origin/${branch}`) !== git(settings.path, 'rev-parse', 'HEAD^'))
+      return { created: true, published: false, name, error: 'GitHub advanced during creation. The local project is preserved for reconciliation.' };
+    git(settings.path, 'push', 'origin', `HEAD:${branch}`);
+    return { created: true, published: true, name };
+  } catch (error) {
+    return { created: true, published: false, name, error: errorText(error) };
+  }
 }
 
 function safeProject(settings, name) {

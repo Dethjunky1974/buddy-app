@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import pty from 'node-pty';
 import { WebSocketServer } from 'ws';
 import { catalog } from './catalog.js';
-import { vaultSettings, configureVault, projects, projectContext, saveRecord, pendingCount, retryQueuedRecords } from './vault.js';
+import { vaultSettings, configureVault, projects, projectContext, createProject, saveRecord, pendingCount, retryQueuedRecords } from './vault.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicRoot = path.join(root, 'public');
@@ -77,7 +77,8 @@ function terminal(key, engine, cwd, model, effort) {
   });
   proc.onExit(({ exitCode }) => {
     state.proc = null;
-    for (const client of state.clients) if (client.readyState === 1) client.send(JSON.stringify({ type: 'exit', exitCode }));
+    const recoverable = engine === 'codex' && state.buffer.includes('workspace routing discovery timed out');
+    for (const client of state.clients) if (client.readyState === 1) client.send(JSON.stringify({ type: 'exit', exitCode, recoverable }));
     flushPending(key);
   });
   sessions.set(key, state);
@@ -102,7 +103,8 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url.pathname === '/api/status') return json(res, 200, { vault: vaultSettings(), pendingCount: pendingCount(), defaultWorkspace: process.env.BUDDY_WORKSPACE_PATH || root, engines: { codex: !!process.env.PATH?.split(':').some(p => fs.existsSync(path.join(p, 'codex'))), claude: !!process.env.PATH?.split(':').some(p => fs.existsSync(path.join(p, 'claude'))) } });
     if (url.pathname === '/api/vault/config' && req.method === 'POST') return json(res, 200, configureVault(await body(req)));
-    if (url.pathname === '/api/projects') return json(res, 200, projects());
+    if (url.pathname === '/api/projects' && req.method === 'GET') return json(res, 200, projects());
+    if (url.pathname === '/api/projects' && req.method === 'POST') return json(res, 200, createProject((await body(req)).name));
     if (url.pathname === '/api/context') return json(res, 200, projectContext(url.searchParams.get('project')));
     if (url.pathname === '/api/catalog') return json(res, 200, catalog(workspace(url.searchParams.get('workspace'))));
     if (url.pathname === '/api/retry-saves' && req.method === 'POST') return json(res, 200, retryQueuedRecords());
