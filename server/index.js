@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 import pty from 'node-pty';
 import { WebSocketServer } from 'ws';
 import { catalog } from './catalog.js';
+import { claudeConfigDir } from './claude-config.js';
 import { vaultSettings, configureVault, projects, projectContext, createProject, saveRecord, pendingCount, retryQueuedRecords } from './vault.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -61,7 +62,8 @@ function terminal(key, engine, cwd, model, effort) {
     ? [...(model ? ['--model', model] : []), ...(effort ? ['--config', `model_reasoning_effort="${effort}"`] : [])]
     : [...(model ? ['--model', model] : []), ...(effort ? ['--effort', effort] : [])];
   const proc = pty.spawn(command, args, { name: 'xterm-256color', cols: 90, rows: 28, cwd,
-    env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' } });
+    env: { ...process.env, ...(engine === 'claude' ? { CLAUDE_CONFIG_DIR: claudeConfigDir() } : {}),
+      TERM: 'xterm-256color', COLORTERM: 'truecolor' } });
   const state = { proc, cwd, model, effort, buffer: '', clients: new Set(), engine, key, idleTimer: null };
   proc.onData(data => {
     state.buffer = (state.buffer + data).slice(-120000);

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { claudeConfigDir } from './claude-config.js';
 
 const home = os.homedir();
 const dir = p => p && fs.existsSync(p) && fs.statSync(p).isDirectory();
@@ -64,7 +65,7 @@ function scanSkills(roots, engine) {
   for (const input of roots) {
     const root = typeof input === 'string' ? input : input.path;
     const namespace = typeof input === 'string' ? '' : input.namespace;
-    for (const folder of directories(root, 2)) {
+    for (const folder of directories(root, 3)) {
       const file = path.join(folder, 'SKILL.md');
       if (!fs.existsSync(file)) continue;
       const source = read(file);
@@ -108,7 +109,7 @@ function scanCommands(roots) {
 }
 
 export function catalog(workspace) {
-  const claudeHome = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+  const claudeHome = claudeConfigDir();
   const codexHome = process.env.CODEX_HOME || path.join(home, '.codex');
   let codexPlugins = [];
   try {
