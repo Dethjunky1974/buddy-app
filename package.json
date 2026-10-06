@@ -1,0 +1,25 @@
+{
+  "name": "buddy-workspace",
+  "version": "0.1.0",
+  "private": false,
+  "license": "MIT",
+  "description": "Local macOS workspace for Codex and Claude Code",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test",
+    "postinstall": "node scripts/prepare-pty.mjs"
+  },
+  "type": "module",
+  "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "node-pty": "^1.1.0",
+    "ws": "^8.22.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "node-pty@1.1.0": true
+  }
+}

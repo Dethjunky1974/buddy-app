@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-label="Buddy product illustration: Codex and Claude Code panes above one prompt composer">
+  <defs>
+    <linearGradient id="canvas" x2="1" y2="1"><stop stop-color="#151b1c"/><stop offset="1" stop-color="#222b2b"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity=".28"/></filter>
+  </defs>
+  <rect width="1200" height="420" rx="24" fill="url(#canvas)"/>
+  <circle cx="1100" cy="30" r="260" fill="#90a89c" opacity=".06"/>
+  <circle cx="75" cy="395" r="240" fill="#d4ae83" opacity=".06"/>
+  <g transform="translate(78 82)">
+    <path d="M16 89 C26 80 28 55 36 36 C43 18 60 12 73 14 C93 15 103 33 106 54 C110 76 116 87 125 91 C129 96 124 103 117 102 C110 100 106 108 100 107 C92 104 87 111 79 109 C71 105 67 112 59 109 C51 105 47 110 40 106 C33 101 27 105 20 101 C14 98 12 93 16 89 Z" fill="#f5f5f2" stroke="#f5f5f2" stroke-width="3"/>
+    <ellipse cx="56" cy="53" rx="7" ry="12" fill="#141a1b"/><ellipse cx="86" cy="53" rx="7" ry="12" fill="#141a1b"/>
+    <path d="M37 68 C36 78 33 88 29 94 M103 71 C104 82 110 90 114 94" fill="none" stroke="#141a1b" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="0" y="160" fill="#f1f4ef" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="72" font-weight="700" letter-spacing="-5">buddy</text>
+    <text x="3" y="201" fill="#afbbb4" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="19">Two coding agents. One calm workspace.</text>
+    <rect x="0" y="232" width="126" height="34" rx="17" fill="#394842"/>
+    <text x="20" y="255" fill="#e9efe9" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600">LOCAL FIRST</text>
+  </g>
+  <g filter="url(#shadow)" transform="translate(528 54)">
+    <rect width="606" height="312" rx="17" fill="#101516" stroke="#43504b"/>
+    <rect width="606" height="42" rx="17" fill="#222b2a"/>
+    <rect y="30" width="606" height="12" fill="#222b2a"/>
+    <circle cx="22" cy="21" r="4" fill="#eabb8f"/><circle cx="36" cy="21" r="4" fill="#93ac9c"/><circle cx="50" cy="21" r="4" fill="#708b8c"/>
+    <text x="78" y="26" fill="#dce5dd" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600">Workspace</text>
+    <rect x="17" y="58" width="279" height="177" rx="10" fill="#171e1f" stroke="#384541"/>
+    <rect x="310" y="58" width="279" height="177" rx="10" fill="#171e1f" stroke="#384541"/>
+    <text x="31" y="83" fill="#f1f4ef" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700">◈  Codex</text>
+    <text x="325" y="83" fill="#f1f4ef" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700">✳  Claude Code</text>
+    <rect x="31" y="101" width="249" height="1" fill="#3e4b46"/><rect x="324" y="101" width="249" height="1" fill="#3e4b46"/>
+    <g fill="#8eaaa1" font-family="Menlo,monospace" font-size="10"><text x="32" y="126">› ready to build</text><text x="32" y="146">  skills loaded · project ready</text><text x="325" y="126">› ready to explore</text><text x="325" y="146">  commands loaded · vault ready</text></g>
+    <rect x="17" y="247" width="572" height="48" rx="9" fill="#252e2d" stroke="#4b5b53"/>
+    <rect x="26" y="255" width="110" height="30" rx="6" fill="#a98460"/>
+    <text x="39" y="275" fill="#121817" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="700">Codex · CC · Both</text>
+    <text x="151" y="275" fill="#a9b8af" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12">Ask once. Send where it matters.</text>
+  </g>
+</svg>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111316">
+  <title>Buddy — Codex + Claude Code</title>
+  <link rel="stylesheet" href="/vendor/xterm.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <div class="brand"><div class="mark" aria-hidden="true"><img src="/buddy-icon.png" alt=""></div><span>buddy</span></div>
+      <div class="rail-section">
+        <label class="eyebrow" for="workspace">WORKSPACE</label>
+        <div class="path-row"><input id="workspace" type="text" spellcheck="false" aria-label="Working directory"><button id="applyWorkspace" class="small-button" title="Open folder in both terminals">Open</button></div>
+        <p class="help">Both CLIs run in this folder on this Mac.</p>
+      </div>
+      <div class="rail-section">
+        <div class="section-line"><label class="eyebrow" for="project" id="vaultLabel">VAULT · OPTIONAL</label><button id="configureVault" class="text-button">Set up</button></div>
+        <select id="project"><option value="">Select a project</option></select>
+        <p id="vaultPath" class="help"></p>
+        <div id="vaultStatus" class="vault-status"><span class="status-dot"></span><span>Checking vault…</span></div><button id="retrySaves" class="text-button retry-button" hidden>Retry queued saves</button>
+      </div>
+      <div class="rail-section source-section">
+        <div class="section-line"><span class="eyebrow">CONTEXT SOURCE</span><button id="refreshContext" class="text-button">Refresh</button></div>
+        <div id="contextFiles" class="context-files">Choose a project to load current notes.</div>
+        <p class="help" id="vaultHelp">Prompts work without a vault. Session records stay on this Mac.</p>
+      </div>
+      <div class="rail-footer"><span class="keycap">⌘</span> <span class="keycap">↵</span> to send<br><span class="footer-note">Local on this Mac · your vault is optional</span></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar"><div class="title-block"><h1>Workspace</h1><span>Codex and Claude Code, together.</span></div><div class="top-actions"><span id="connectionBadge" class="connection-badge"><i></i> Starting</span><button id="openSkills" class="top-button">Skills <span class="shortcut">⌘K</span></button></div></header>
+      <div class="pane-grid">
+        <section class="pane" id="codexPane"><header class="pane-header"><div class="pane-name"><span class="pane-icon codex-icon">◈</span><div><strong>Codex</strong><small id="codexModelLabel">CLI default</small></div></div><div class="pane-actions"><span id="codexState" class="pane-state">Connecting</span><button class="model-button" data-model="codex">Model & effort</button><button class="icon-button" data-restart="codex" title="Reconnect Codex">↻</button></div></header><div id="codexTerminal" class="terminal" aria-label="Codex terminal"></div></section>
+        <section class="pane" id="claudePane"><header class="pane-header"><div class="pane-name"><span class="pane-icon claude-icon">✳</span><div><strong>Claude Code</strong><small id="claudeModelLabel">CLI default</small></div></div><div class="pane-actions"><span id="claudeState" class="pane-state">Connecting</span><button class="model-button" data-model="claude">Model & effort</button><button class="icon-button" data-restart="claude" title="Reconnect Claude Code">↻</button></div></header><div id="claudeTerminal" class="terminal" aria-label="Claude Code terminal"></div></section>
+      </div>
+      <section class="composer-shell" aria-label="Shared prompt composer">
+        <div class="composer-top"><div class="target-switch" role="radiogroup" aria-label="Send prompt to"><button data-target="codex" role="radio" aria-checked="true">Codex</button><button data-target="claude" role="radio" aria-checked="false">Claude Code</button><button data-target="both" role="radio" aria-checked="false">Both</button></div><span class="composer-hint">One prompt · selected destinations</span></div>
+        <div id="commandChips" class="command-chips" hidden></div>
+        <textarea id="prompt" rows="3" placeholder="Ask Codex, Claude Code, or both…" aria-label="Your prompt"></textarea>
+        <div class="composer-bottom"><div class="composer-tools"><button id="selectSkill" class="tool-button"><span class="tool-icon">✳</span> Add skill or command</button><button id="improvePrompt" class="tool-button"><span class="tool-icon">✦</span> Improve selection</button><select id="improveEngine" aria-label="AI for prompt improvement"><option value="codex">with Codex</option><option value="claude">with Claude Code</option></select></div><button id="sendPrompt" class="send-button">Send prompt <span>↗</span></button></div>
+      </section>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <dialog id="skillDialog" class="modal"><form method="dialog" class="modal-panel"><div class="modal-head"><div><div class="eyebrow">COMMAND LIBRARY</div><h2>Skills & commands</h2><p>Choose a command to add it to your next prompt.</p></div><button class="close-button" aria-label="Close">×</button></div><div class="modal-controls"><div class="modal-tabs"><button type="button" data-skill-engine="codex" class="active">Codex</button><button type="button" data-skill-engine="claude">Claude Code</button></div><input id="skillSearch" type="search" placeholder="Search installed skills…" aria-label="Search skills"></div><div class="modal-body"><div id="skillList" class="skill-list"></div><div class="command-detail"><label class="skill-select-label" for="skillSelect">Installed skill</label><select id="skillSelect" aria-label="Installed skill"></select><div id="skillDetail"></div><div id="commandList" class="command-list"></div></div></div></form></dialog>
+  <dialog id="improveDialog" class="modal improve-modal"><div class="modal-panel"><div class="modal-head"><div><div class="eyebrow">PROMPT IMPROVEMENT</div><h2>Review the rewrite</h2><p>Your selected text stays unchanged until you accept.</p></div><button id="closeImprove" class="close-button" aria-label="Close">×</button></div><div class="improve-columns"><div><label>Original</label><div id="originalText" class="preview-text"></div></div><div><label>Improved</label><textarea id="improvedText" rows="10" aria-label="Improved prompt text"></textarea></div></div><div class="modal-footer"><button id="cancelImprove" class="secondary-button">Cancel</button><button id="acceptImprove" class="send-button">Use improved text</button></div></div></dialog>
+  <dialog id="modelDialog" class="modal model-modal"><div class="modal-panel"><div class="modal-head"><div><div class="eyebrow">SESSION SETTINGS</div><h2 id="modelDialogTitle">Codex model</h2><p>Choose the model and effort for this terminal.</p></div><button id="closeModel" class="close-button" aria-label="Close">×</button></div><div class="model-fields"><label for="modelInput">Model <span>Leave blank to use your CLI default.</span></label><input id="modelInput" list="modelSuggestions" placeholder="CLI default" autocomplete="off" spellcheck="false"><datalist id="modelSuggestions"></datalist><label for="effortInput">Reasoning effort</label><select id="effortInput"></select><p>Applying these settings starts a new session in this pane. Your previous conversation remains in the CLI's history.</p></div><div class="modal-footer"><button id="cancelModel" class="secondary-button">Cancel</button><button id="applyModel" class="send-button">Start new session</button></div></div></dialog>
+  <dialog id="vaultDialog" class="modal model-modal"><div class="modal-panel"><div class="modal-head"><div><div class="eyebrow">YOUR KNOWLEDGE SOURCE</div><h2>Set up a vault</h2><p>Choose how Buddy keeps your notes.</p></div><button id="closeVault" class="close-button" aria-label="Close">×</button></div><div class="model-fields"><label for="vaultModeInput">Storage</label><select id="vaultModeInput"><option value="none">No vault · local sessions</option><option value="local">Obsidian vault · this Mac</option><option value="github">Obsidian vault · GitHub sync</option></select><p id="vaultModeHelp"></p><div id="vaultNameField"><label for="vaultNameInput">Vault name</label><input id="vaultNameInput" placeholder="My studio vault" maxlength="80"></div><div id="vaultPathField"><label for="vaultPathInput">Folder on this Mac</label><input id="vaultPathInput" placeholder="~/Documents/Obsidian/My Vault" spellcheck="false"></div><div id="vaultRemoteField"><label for="vaultRemoteInput">GitHub repository URL <span>For a new folder, Buddy clones this repository. An existing checkout can use its origin.</span></label><input id="vaultRemoteInput" placeholder="https://github.com/you/your-vault.git" spellcheck="false"></div></div><div class="modal-footer"><button id="cancelVault" class="secondary-button">Cancel</button><button id="saveVault" class="send-button">Save vault setup</button></div></div></dialog>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
