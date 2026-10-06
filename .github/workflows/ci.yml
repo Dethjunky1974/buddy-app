@@ -18,3 +18,5 @@ jobs:
       - run: npm test
       - run: node --check server/index.js
       - run: node --check public/app.js
+      - run: zsh -n install.sh scripts/install-macos.sh
+      - run: python3 -m py_compile scripts/pin-dock.py

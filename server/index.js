@@ -101,7 +101,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 403, { error: 'Forbidden origin' });
   const url = new URL(req.url, `http://localhost:${port}`);
   try {
-    if (url.pathname === '/api/status') return json(res, 200, { vault: vaultSettings(), pendingCount: pendingCount(), defaultWorkspace: process.env.BUDDY_WORKSPACE_PATH || root, engines: { codex: !!process.env.PATH?.split(':').some(p => fs.existsSync(path.join(p, 'codex'))), claude: !!process.env.PATH?.split(':').some(p => fs.existsSync(path.join(p, 'claude'))) } });
+    if (url.pathname === '/api/status') return json(res, 200, { installInstance: process.env.BUDDY_INSTALL_INSTANCE || null, vault: vaultSettings(), pendingCount: pendingCount(), defaultWorkspace: process.env.BUDDY_WORKSPACE_PATH || root, engines: { codex: !!process.env.PATH?.split(':').some(p => fs.existsSync(path.join(p, 'codex'))), claude: !!process.env.PATH?.split(':').some(p => fs.existsSync(path.join(p, 'claude'))) } });
     if (url.pathname === '/api/vault/config' && req.method === 'POST') return json(res, 200, configureVault(await body(req)));
     if (url.pathname === '/api/projects' && req.method === 'GET') return json(res, 200, projects());
     if (url.pathname === '/api/projects' && req.method === 'POST') return json(res, 200, createProject((await body(req)).name));

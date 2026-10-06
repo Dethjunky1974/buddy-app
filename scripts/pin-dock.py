@@ -10,6 +10,10 @@ app = pathlib.Path(sys.argv[1]).resolve()
 support = pathlib.Path(sys.argv[2])
 original = subprocess.check_output(["defaults", "export", "com.apple.dock", "-"])
 settings = plistlib.loads(original)
+if any(item.get("tile-data", {}).get("bundle-identifier") == "app.buddy.local"
+       for item in settings.get("persistent-apps", [])):
+    print("Buddy is already in the Dock.")
+    sys.exit(0)
 apps = [item for item in settings.get("persistent-apps", [])
         if item.get("tile-data", {}).get("bundle-identifier") != "app.buddy.local"]
 
