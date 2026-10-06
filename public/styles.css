@@ -14,3 +14,28 @@
 
 .model-modal .modal-panel{width:min(520px,calc(100vw - 30px));max-height:calc(100dvh - 30px);overflow:auto}.model-choices{display:grid;gap:6px}.model-choices[hidden]{display:none}.model-choice{position:relative;display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;padding:11px 40px 11px 12px;color:var(--text);background:#202526;border:1px solid #3c4643;border-radius:9px}.model-choice:hover{background:#2c3431;border-color:#8d745a}.model-choice[aria-pressed=true]{border-color:var(--accent);background:#332c24}.model-choice strong{font-size:13px;font-weight:650}.model-choice small{font-size:11px;color:var(--muted)}.model-choice>span{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--accent)}
 .project-row{display:flex;align-items:stretch;gap:7px;margin-top:13px}.project-row #project{min-width:0;margin-top:0}.new-project-button{flex:none;width:35px;border:1px solid #535b5a;background:#343a3b;color:#e9ebe7;border-radius:9px;font-size:21px;line-height:1}.new-project-button:hover{background:#414849}.new-project-button:disabled{cursor:not-allowed;opacity:.45}#projectError{color:var(--danger);margin:0}#projectError[hidden]{display:none}
+
+/* The terminals own the workspace; controls stay with the agent they affect. */
+.main{padding:0 16px 14px;background:radial-gradient(ellipse at 50% -20%,#1c2223 0,#111315 56%)}
+.pane-grid{padding-top:12px;gap:11px}
+.pane{background:linear-gradient(155deg,#202526,#181b1d 38%);border-color:#3d4543;border-radius:14px;box-shadow:0 6px 12px #0007,inset 0 1px #ffffff0c}
+.pane-header{min-height:58px;padding:10px 13px;background:linear-gradient(180deg,#242a29,#1c2120);border-bottom-color:#3b4441}
+.pane-name{min-width:0}.pane-name>div:last-child{min-width:0}.pane-name strong{font-size:12px}.pane-name small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pane-actions{gap:7px;flex:none}.pane-state{display:inline-block!important;flex:none;width:9px;height:9px;overflow:hidden;border-radius:50%;font-size:0;line-height:0;color:transparent;background:#a9c9ac;box-shadow:0 1px 2px #0009}.pane-state.offline{background:#dc918b;box-shadow:0 1px 2px #0009}
+.skills-button,.model-button,.icon-button{height:30px;border:1px solid #48524f;border-radius:8px;background:linear-gradient(180deg,#303735,#252c2a);color:#d9e0d9;box-shadow:inset 0 1px #ffffff16,0 2px 5px #0004;transition:background .16s var(--ease),border-color .16s var(--ease),transform .12s var(--ease)}
+.skills-button,.model-button{padding:0 10px;font-size:11px;font-weight:620;white-space:nowrap;max-width:none}
+.skills-button{border-color:#645848;background:linear-gradient(180deg,#39342d,#2c2924);color:#e5c29a}
+.skills-button:hover,.model-button:hover,.icon-button:hover{background:linear-gradient(180deg,#434b47,#303835);border-color:#839389;color:#fff}
+.skills-button:active,.model-button:active,.icon-button:active{transform:translateY(1px);box-shadow:inset 0 2px 5px #0006}
+.icon-button{display:grid;place-items:center;width:30px;font-size:19px;padding:0;line-height:1}
+.terminal{padding:10px 8px 7px 11px;box-shadow:inset 0 9px 18px #0003}
+.composer-shell{margin-top:10px;background:linear-gradient(180deg,#222827,#1b201f);border-color:#4a5550;box-shadow:0 4px 10px #0007,inset 0 1px #ffffff10}
+.composer-top{padding-top:10px}.composer-bottom{padding-top:8px;padding-bottom:8px}#prompt{min-height:76px;padding-top:11px;padding-bottom:8px}
+.target-switch{box-shadow:inset 0 2px 4px #0008}.target-switch button[aria-checked=true]{background:linear-gradient(180deg,#4a5550,#343d39);box-shadow:inset 0 1px #ffffff1b,0 2px 5px #0007}
+.send-button{background:linear-gradient(180deg,#ebc39a,#d1a474);border-color:#f2c99e;box-shadow:inset 0 1px #ffffff80,0 3px 9px #0005}.send-button:hover{background:linear-gradient(180deg,#f3cea8,#ddae7f)}
+.small-button,.new-project-button,.top-button{background:linear-gradient(180deg,#3b4340,#2b3230);box-shadow:inset 0 1px #ffffff14,0 2px 5px #0004}
+.model-modal .modal-panel,.improve-modal .modal-panel,.modal-panel{box-shadow:0 28px 80px #000b,inset 0 1px #ffffff0e}
+@media(max-width:1120px){.pane-actions{gap:5px}.skills-button,.model-button{padding:0 7px;max-width:none;white-space:nowrap}.pane-header{padding:9px}}
+@media(max-width:900px){.pane-grid{grid-template-columns:1fr;grid-template-rows:minmax(300px,1fr) minmax(300px,1fr)}.main{overflow:auto}.pane{min-height:300px}}
+@media(max-width:760px){.main{padding:0 12px 12px}.pane-grid{padding-top:10px}}
+@media(prefers-reduced-motion:reduce){.skills-button,.model-button,.icon-button{transition:none}}

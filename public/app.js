@@ -151,6 +151,7 @@ function connect(engine, retry = false) {
   const ws = new WebSocket(`${scheme}//${location.host}/terminal?client=${encodeURIComponent(tabId)}&engine=${engine}&workspace=${encodeURIComponent(state.workspace)}&model=${encodeURIComponent(settings.model || '')}&effort=${encodeURIComponent(settings.effort || '')}`);
   state.sockets[engine] = ws;
   $(`${engine}State`).textContent = 'Connecting';
+  updateConnection();
   ws.onopen = () => { if (state.sockets[engine] === ws) resize(engine); };
   ws.onmessage = event => {
     if (state.sockets[engine] !== ws) return;
@@ -187,9 +188,13 @@ function resize(engine) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
 }
 function updateConnection() {
-  const ready = ['codex', 'claude'].filter(e => state.sockets[e]?.readyState === WebSocket.OPEN && state.running[e]).length;
-  $('connectionBadge').innerHTML = `<i></i>${ready === 2 ? 'Both ready' : `${ready} of 2 ready`}`;
-  $('connectionBadge').classList.toggle('offline', ready < 2);
+  for (const engine of ['codex', 'claude']) {
+    const indicator = $(`${engine}State`);
+    const ready = state.sockets[engine]?.readyState === WebSocket.OPEN && state.running[engine];
+    indicator.classList.toggle('offline', !ready);
+    indicator.title = `${engine === 'codex' ? 'Codex' : 'Claude Code'}: ${indicator.textContent}`;
+    indicator.setAttribute('aria-label', indicator.title);
+  }
 }
 
 function chooseTarget(target) {
@@ -199,8 +204,9 @@ function chooseTarget(target) {
   document.querySelectorAll('[data-skill-engine]').forEach(button => button.classList.toggle('active', button.dataset.skillEngine === state.skillEngine));
   renderSkills();
 }
-function openSkills() {
-  state.skillEngine = state.target === 'both' ? state.skillEngine : state.target;
+function openSkills(engine) {
+  state.skillEngine = ['codex', 'claude'].includes(engine) ? engine : state.target === 'both' ? state.skillEngine : state.target;
+  state.selectedSkill = null;
   $('skillSearch').value = '';
   document.querySelectorAll('[data-skill-engine]').forEach(button => button.classList.toggle('active', button.dataset.skillEngine === state.skillEngine));
   renderSkills(); $('skillDialog').showModal(); $('skillSearch').focus();
@@ -394,7 +400,8 @@ function bind() {
   $('closeVault').onclick = $('cancelVault').onclick = () => $('vaultDialog').close();
   $('saveVault').onclick = saveVaultSettings;
   $('retrySaves').onclick = async () => { const result = await api('/api/retry-saves', { method: 'POST' }); $('retrySaves').hidden = !result.remaining; toast(result.remaining ? `${result.remaining} saves still queued: ${result.error}` : `${result.published} queued saves published`, !!result.remaining); };
-  $('openSkills').onclick = $('selectSkill').onclick = openSkills;
+  $('selectSkill').onclick = () => openSkills();
+  document.querySelectorAll('[data-open-skills]').forEach(button => button.onclick = () => openSkills(button.dataset.openSkills));
   $('skillSearch').oninput = renderSkills;
   $('skillSelect').onchange = () => { state.selectedSkill = $('skillSelect').value; renderSkills(); };
   $('sendPrompt').onclick = sendPrompt;

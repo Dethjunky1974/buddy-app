@@ -53,7 +53,7 @@ Use the **+** beside the project picker to create a project directly in Buddy. I
 
 - **One composer, three destinations:** Codex, Claude Code, or both. Enter sends; Shift+Enter adds a new line.
 - **Real interactive terminals:** native CLI prompts, permissions, and keyboard controls remain available.
-- **Command library:** scans installed Codex and Claude Code skills, plugins, and project commands; choose an invocation before sending.
+- **Command library:** each agent pane opens its own installed skills, plugins, and project commands; choose an invocation before sending.
 - **Prompt improvement:** highlight text, improve it with Codex or Claude Code, then review the rewrite before accepting.
 - **Independent models:** choose a specific Codex or Claude version from clear model cards, or enter any full model ID, then set effort per pane. Changing either starts a new CLI session.
 - **Optional Obsidian context:** use your own named vault locally or across Macs through GitHub.
