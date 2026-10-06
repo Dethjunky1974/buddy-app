@@ -15,6 +15,7 @@ test('optional, local, and GitHub-backed vault modes keep records in the right p
   const payload = { project: 'Demo', engine: 'codex', prompt: 'Check the layout', output: 'Looks good', commands: ['$impeccable polish'] };
 
   assert.equal(vault.vaultSettings().mode, 'none');
+  assert.equal(vault.vaultSettings().wiki, false);
   assert.throws(() => vault.createProject('Demo'), /Connect a vault/);
   const localOnly = vault.saveRecord(payload);
   assert.equal(localOnly.saved, true);
@@ -22,7 +23,15 @@ test('optional, local, and GitHub-backed vault modes keep records in the right p
   assert.match(fs.readFileSync(localOnly.file, 'utf8'), /Check the layout/);
 
   const folder = path.join(temp, 'My Vault');
-  assert.equal(vault.configureVault({ mode: 'local', name: 'Studio Notes', path: folder }).name, 'Studio Notes');
+  const configured = vault.configureVault({ mode: 'local', name: 'Studio Notes', path: folder, wiki: true });
+  assert.equal(configured.name, 'Studio Notes');
+  assert.equal(configured.wiki, true);
+  assert.equal(configured.wikiSetup.created.length, 7);
+  assert.match(fs.readFileSync(path.join(folder, 'Knowledge/AGENTS.md'), 'utf8'), /raw\/ as the immutable source/);
+  assert.match(fs.readFileSync(path.join(folder, 'Knowledge/wiki/index.md'), 'utf8'), /Overview/);
+  const schema = fs.readFileSync(path.join(folder, 'Knowledge/AGENTS.md'), 'utf8');
+  assert.deepEqual(vault.configureVault({ mode: 'local', name: 'Studio Notes', path: folder, wiki: true }).wikiSetup.created, []);
+  assert.equal(fs.readFileSync(path.join(folder, 'Knowledge/AGENTS.md'), 'utf8'), schema);
   const localProject = vault.createProject('New Project');
   assert.equal(localProject.created, true);
   assert.equal(localProject.published, false);
@@ -45,6 +54,24 @@ test('optional, local, and GitHub-backed vault modes keep records in the right p
   git(folder, 'config', 'user.email', 'test@example.com');
   git(folder, 'add', '.'); git(folder, 'commit', '-m', 'Start vault');
   git(folder, 'remote', 'add', 'origin', remote); git(folder, 'push', '-u', 'origin', 'main');
+
+  const wikiFolder = path.join(temp, 'Shared Wiki');
+  fs.mkdirSync(wikiFolder);
+  git(wikiFolder, 'init', '-b', 'main');
+  git(wikiFolder, 'config', 'user.name', 'Test User');
+  git(wikiFolder, 'config', 'user.email', 'test@example.com');
+  fs.writeFileSync(path.join(wikiFolder, 'README.md'), '# Shared Wiki\n');
+  git(wikiFolder, 'add', '.'); git(wikiFolder, 'commit', '-m', 'Start wiki vault');
+  const wikiRemote = path.join(temp, 'wiki-remote.git');
+  git(temp, 'init', '--bare', wikiRemote);
+  git(wikiFolder, 'remote', 'add', 'origin', wikiRemote); git(wikiFolder, 'push', '-u', 'origin', 'main');
+  const publishedWiki = vault.initializeWiki(wikiFolder, 'github');
+  assert.equal(publishedWiki.published, true, publishedWiki.error);
+  assert.equal(publishedWiki.created.length, 7);
+  assert.equal(git(wikiFolder, 'rev-parse', 'HEAD'), git(wikiFolder, 'rev-parse', 'origin/main'));
+  assert.deepEqual(vault.initializeWiki(wikiFolder, 'github').created, []);
+  assert.equal(fs.readFileSync(path.join(wikiFolder, 'README.md'), 'utf8'), '# Shared Wiki\n');
+
   fs.writeFileSync(configFile, JSON.stringify({ mode: 'github', name: 'Studio Notes', path: folder, remote: '' }));
   const sharedProject = vault.createProject('Shared Project');
   assert.equal(sharedProject.published, true, sharedProject.error);

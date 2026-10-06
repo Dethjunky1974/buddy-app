@@ -47,6 +47,21 @@ Open **Set up** in the left sidebar. A vault is optional, and you can name it an
 | **Local vault** | Reads `Projects/<project>/hot.md` and `index.md`; saves sessions under `Tooling/Buddy/` in your chosen folder | One Mac, or a vault synced by your own method |
 | **GitHub vault** | Uses an existing GitHub checkout, or clones a repository into a new folder. Pulls before reading, commits Buddy's own session files, and pushes after saving | The same vault on multiple Macs |
 
+When connecting a local or GitHub vault, you can also check **Create a Karpathy-style LLM Wiki**. This optional starter follows the three-layer pattern in [Andrej Karpathy's LLM Wiki idea](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): immutable sources, agent-maintained Markdown pages, and a shared schema. Buddy creates only missing files inside `Knowledge/`:
+
+```text
+Knowledge/
+  README.md      how the optional wiki works
+  AGENTS.md       writing rules for Codex and Claude Code
+  CLAUDE.md       points Claude Code to the shared rules
+  raw/README.md   where you add original source material
+  wiki/index.md   catalog of maintained pages
+  wiki/overview.md
+  wiki/log.md     append-only activity log
+```
+
+Add sources to `Knowledge/raw/`, then ask either agent to ingest them. The schema tells agents to preserve raw files, cite sources, update linked wiki pages and the index, and append to the log. Buddy includes a brief pointer to these rules in prompts when the option is enabled. Existing vault notes and schema files are never overwritten; turning the option off leaves any created files in place. In GitHub mode, Buddy commits and pushes only the starter files it created.
+
 For GitHub mode, install Git, create a **private repository with an initial commit**, and sign in to Git on each Mac. Paste its URL into Buddy if it needs to clone a new folder; for an existing checkout, its `origin` remote is enough. Use a separate checkout on each Mac and choose GitHub mode on both. Buddy refuses to overwrite dirty or diverged Git state. When a save cannot safely publish, it queues the record locally for retry.
 
 Buddy never needs your vault to run the CLIs. With a vault connected, selecting a project adds its current `hot.md` and `index.md` to the prompt. Session records include the prompt and a short terminal excerpt; keep sensitive text out of the composer if you do not want it recorded in your vault.

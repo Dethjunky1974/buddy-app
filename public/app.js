@@ -23,7 +23,7 @@ const state = {
   project: localStorage.getItem('buddy-project') || '',
   workspace: localStorage.getItem('buddy-workspace') || '',
   settings: { codex: savedSettings('codex'), claude: savedSettings('claude') }, modelDialogEngine: 'codex',
-  vault: { mode: 'none', name: '', path: '', remote: '' }, vaultSyncOk: true,
+  vault: { mode: 'none', name: '', path: '', remote: '', wiki: false }, vaultSyncOk: true,
   running: { codex: false, claude: false }, retries: { codex: 0, claude: 0 }
 };
 const toast = (message, error = false) => {
@@ -113,7 +113,7 @@ function renderVault() {
   $('vaultPath').textContent = vault.mode === 'none' ? 'Add an Obsidian vault if you want shared project context.' : vault.path;
   $('project').disabled = vault.mode === 'none';
   $('newProject').disabled = vault.mode === 'none';
-  $('vaultHelp').textContent = vault.mode === 'none' ? 'Prompts work without a vault. Session records stay on this Mac.' : 'Current project notes are included when you send. Sessions save to this vault.';
+  $('vaultHelp').textContent = vault.mode === 'none' ? 'Prompts work without a vault. Session records stay on this Mac.' : `Current project notes are included when you send. Sessions save to this vault.${vault.wiki ? ' LLM Wiki enabled.' : ''}`;
 }
 async function refreshContext() {
   state.project = $('project').value;
@@ -321,10 +321,12 @@ async function sendPrompt() {
   const targets = state.target === 'both' ? ['codex', 'claude'] : [state.target];
   if (targets.some(e => state.sockets[e]?.readyState !== WebSocket.OPEN || !state.running[e])) return toast('A selected CLI has exited or is disconnected. Reconnect its pane first.', true);
   const context = state.context ? `\n\n<obsidian-context project="${state.project}">\n${state.context}\n</obsidian-context>\n\nUse this as project reference.` : '';
+  const wiki = state.vault.mode !== 'none' && state.vault.wiki
+    ? `\n\n<knowledge-wiki path="${state.vault.path}/Knowledge">\nFor knowledge-base tasks, read Knowledge/AGENTS.md before writing. Preserve Knowledge/raw sources; maintain linked pages in Knowledge/wiki, including its index and log. Do not change the wiki for unrelated tasks.\n</knowledge-wiki>` : '';
   for (const engine of targets) {
     const commands = state.commands[engine];
     const prefix = commands.map(c => c.invocation).join('\n');
-    state.sockets[engine].send(JSON.stringify({ type: 'prompt', text: `${prefix ? `${prefix}\n\n` : ''}${text}${context}`, project: state.project, commands: commands.map(c => c.invocation) }));
+    state.sockets[engine].send(JSON.stringify({ type: 'prompt', text: `${prefix ? `${prefix}\n\n` : ''}${text}${context}${wiki}`, project: state.project, commands: commands.map(c => c.invocation) }));
   }
   $('prompt').value = '';
   for (const engine of targets) state.commands[engine] = [];
@@ -337,6 +339,7 @@ function openVaultSettings() {
   $('vaultModeInput').value = state.vault.mode;
   $('vaultPathInput').value = state.vault.path || '';
   $('vaultRemoteInput').value = state.vault.remote || '';
+  $('vaultWikiInput').checked = state.vault.wiki === true;
   updateVaultFields();
   $('vaultDialog').showModal();
 }
@@ -345,20 +348,21 @@ function updateVaultFields() {
   $('vaultNameField').hidden = mode === 'none';
   $('vaultPathField').hidden = mode === 'none';
   $('vaultRemoteField').hidden = mode !== 'github';
+  $('vaultWikiField').hidden = mode === 'none';
   $('vaultModeHelp').textContent = mode === 'github'
     ? 'Use an existing GitHub checkout, or give a new folder and repository URL to clone. Buddy only commits its own session files.'
     : mode === 'local' ? 'Buddy creates the folder if needed. Your notes remain on this Mac.'
     : 'Buddy works without Obsidian and saves sessions locally.';
 }
 async function saveVaultSettings() {
-  const input = { mode: $('vaultModeInput').value, name: $('vaultNameInput').value, path: $('vaultPathInput').value, remote: $('vaultRemoteInput').value };
+  const input = { mode: $('vaultModeInput').value, name: $('vaultNameInput').value, path: $('vaultPathInput').value, remote: $('vaultRemoteInput').value, wiki: $('vaultWikiInput').checked };
   $('saveVault').disabled = true;
   try {
     state.vault = await api('/api/vault/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) });
     $('vaultDialog').close();
     renderVault();
     await loadProjects();
-    toast(state.vault.mode === 'none' ? 'Buddy is using local sessions.' : `${state.vault.name} connected.`);
+    toast(state.vault.wikiSetup?.error ? `Wiki created locally; GitHub sync needs attention: ${state.vault.wikiSetup.error}` : state.vault.mode === 'none' ? 'Buddy is using local sessions.' : `${state.vault.name} connected${state.vault.wiki ? ' with an LLM Wiki' : ''}.`, !!state.vault.wikiSetup?.error);
   } catch (error) { toast(error.message, true); }
   finally { $('saveVault').disabled = false; }
 }

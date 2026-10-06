@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { createWikiStarter } from './wiki-template.js';
 
 const home = os.homedir();
 const dataDir = process.env.BUDDY_DATA_PATH || path.join(home, 'Library/Application Support/Buddy/data');
@@ -12,9 +13,9 @@ const machine = os.hostname().replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
 function readConfig() {
   try {
     const value = JSON.parse(fs.readFileSync(configFile, 'utf8'));
-    if (['none', 'local', 'github'].includes(value.mode)) return value;
+    if (['none', 'local', 'github'].includes(value.mode)) return { ...value, wiki: value.wiki === true };
   } catch {}
-  return { mode: 'none', name: '', path: '', remote: '' };
+  return { mode: 'none', name: '', path: '', remote: '', wiki: false };
 }
 export const vaultSettings = () => readConfig();
 const run = (file, args, cwd, timeout = 30000) => execFileSync(file, args, { cwd, encoding: 'utf8', timeout, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -26,9 +27,38 @@ function publishOwnPending(vaultPath, branch, remote) {
   const commits = git(vaultPath, 'log', `${remote}..HEAD`, '--format=%B%x00').split('\0').map(text => text.trim()).filter(Boolean);
   const files = git(vaultPath, 'diff', '--name-only', `${remote}..HEAD`).trim().split('\n').filter(Boolean);
   if (!commits.length || !commits.every(text => /^Sync-Actor: buddy$/m.test(text))) return false;
-  if (!files.length || !files.every(file => file.startsWith('Tooling/Buddy/') || /^Projects\/[^/]+\/(?:index|hot)\.md$/.test(file))) return false;
+  if (!files.length || !files.every(file => file.startsWith('Tooling/Buddy/') || file.startsWith('Knowledge/') || /^Projects\/[^/]+\/(?:index|hot)\.md$/.test(file))) return false;
   git(vaultPath, 'push', 'origin', `HEAD:${branch}`);
   return true;
+}
+
+export function initializeWiki(vaultPath, mode) {
+  let branch;
+  if (mode === 'github') {
+    branch = git(vaultPath, 'branch', '--show-current');
+    if (!branch) throw new Error('Check out a Git branch before creating the wiki.');
+    if (git(vaultPath, 'status', '--porcelain')) throw new Error('Sync or commit existing vault changes before creating the wiki.');
+    git(vaultPath, 'fetch', 'origin', branch);
+    const head = git(vaultPath, 'rev-parse', 'HEAD');
+    const remote = git(vaultPath, 'rev-parse', `origin/${branch}`);
+    if (head !== remote) {
+      if (git(vaultPath, 'merge-base', head, remote) !== head) throw new Error('Reconcile local vault commits before creating the wiki.');
+      git(vaultPath, 'merge', '--ff-only', remote);
+    }
+  }
+  const created = createWikiStarter(vaultPath);
+  if (mode !== 'github' || !created.length) return { created, published: false };
+  try {
+    git(vaultPath, 'add', '--', ...created);
+    git(vaultPath, 'commit', '-m', 'Buddy: initialize LLM wiki', '-m', `Sync-Actor: buddy\nSync-Machine: ${machine}`);
+    git(vaultPath, 'fetch', 'origin', branch);
+    if (git(vaultPath, 'rev-parse', `origin/${branch}`) !== git(vaultPath, 'rev-parse', 'HEAD^'))
+      return { created, published: false, error: 'GitHub advanced during setup. The local wiki is preserved for reconciliation.' };
+    git(vaultPath, 'push', 'origin', `HEAD:${branch}`);
+    return { created, published: true };
+  } catch (error) {
+    return { created, published: false, error: errorText(error) };
+  }
 }
 
 export function configureVault(input) {
@@ -36,7 +66,7 @@ export function configureVault(input) {
   if (!['none', 'local', 'github'].includes(mode)) throw new Error('Choose no vault, local, or GitHub.');
   if (mode === 'none') {
     fs.mkdirSync(path.dirname(configFile), { recursive: true });
-    fs.writeFileSync(configFile, JSON.stringify({ mode, name: '', path: '', remote: '' }, null, 2));
+    fs.writeFileSync(configFile, JSON.stringify({ mode, name: '', path: '', remote: '', wiki: false }, null, 2));
     return vaultSettings();
   }
   const name = String(input.name || '').trim();
@@ -44,6 +74,7 @@ export function configureVault(input) {
   if (!String(input.path || '').trim()) throw new Error('Choose a local folder for the vault.');
   const vaultPath = expandPath(input.path);
   const remote = String(input.remote || '').trim();
+  const wiki = input.wiki === true;
   if (mode === 'github') {
     if (remote && !/^(https:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?\/?|git@github\.com:[\w.-]+\/[\w.-]+(?:\.git)?)$/.test(remote))
       throw new Error('Use a GitHub repository URL without an embedded password or token.');
@@ -61,9 +92,10 @@ export function configureVault(input) {
   } else {
     fs.mkdirSync(path.join(vaultPath, 'Projects'), { recursive: true });
   }
+  const wikiSetup = wiki ? initializeWiki(vaultPath, mode) : null;
   fs.mkdirSync(path.dirname(configFile), { recursive: true });
-  fs.writeFileSync(configFile, JSON.stringify({ mode, name, path: fs.realpathSync(vaultPath), remote: mode === 'github' ? remote : '' }, null, 2));
-  return vaultSettings();
+  fs.writeFileSync(configFile, JSON.stringify({ mode, name, path: fs.realpathSync(vaultPath), remote: mode === 'github' ? remote : '', wiki }, null, 2));
+  return { ...vaultSettings(), ...(wikiSetup ? { wikiSetup } : {}) };
 }
 
 export function syncVault() {
