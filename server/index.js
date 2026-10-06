@@ -8,6 +8,7 @@ import pty from 'node-pty';
 import { WebSocketServer } from 'ws';
 import { catalog } from './catalog.js';
 import { claudeConfigDir } from './claude-config.js';
+import { LinkBridge } from './link-bridge.js';
 import { vaultSettings, configureVault, projects, projectContext, createProject, saveRecord, pendingCount, retryQueuedRecords } from './vault.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -17,6 +18,8 @@ const allowedHosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
 const allowedOrigins = new Set([`http://127.0.0.1:${port}`, `http://localhost:${port}`]);
 const sessions = new Map();
 const pending = new Map();
+const bridge = new LinkBridge(handleLinkEvent);
+await bridge.start();
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
 function json(res, status, data) {
@@ -49,7 +52,7 @@ function serve(res, url) {
   fs.createReadStream(file).pipe(res);
 }
 
-function terminal(key, engine, cwd, model, effort) {
+function terminal(key, client, engine, cwd, model, effort) {
   const old = sessions.get(key);
   if (old?.cwd === cwd && old.model === model && old.effort === effort && old.proc) return old;
   if (old) {
@@ -59,8 +62,8 @@ function terminal(key, engine, cwd, model, effort) {
   }
   const command = engine === 'codex' ? 'codex' : 'claude';
   const args = engine === 'codex'
-    ? [...(model ? ['--model', model] : []), ...(effort ? ['--config', `model_reasoning_effort="${effort}"`] : [])]
-    : [...(model ? ['--model', model] : []), ...(effort ? ['--effort', effort] : [])];
+    ? [...bridge.codexArgs(client), ...(model ? ['--model', model] : []), ...(effort ? ['--config', `model_reasoning_effort="${effort}"`] : [])]
+    : [...bridge.claudeArgs(client), ...(model ? ['--model', model] : []), ...(effort ? ['--effort', effort] : [])];
   const proc = pty.spawn(command, args, { name: 'xterm-256color', cols: 90, rows: 28, cwd,
     env: { ...process.env, ...(engine === 'claude' ? { CLAUDE_CONFIG_DIR: claudeConfigDir() } : {}),
       TERM: 'xterm-256color', COLORTERM: 'truecolor' } });
@@ -88,6 +91,28 @@ function terminal(key, engine, cwd, model, effort) {
 }
 function broadcast(key, message) {
   for (const client of sessions.get(key)?.clients || []) if (client.readyState === 1) client.send(JSON.stringify(message));
+}
+function handleLinkEvent(event) {
+  if (event.type === 'link') {
+    for (const engine of ['codex', 'claude']) broadcast(`${event.client}:${engine}`, { type: 'link', linked: event.linked });
+    return;
+  }
+  if (event.type === 'timeout') {
+    broadcast(`${event.client}:${event.from}`, { type: 'peer-timeout', peer: event.to, id: event.id, reason: event.reason });
+    return;
+  }
+  if (event.type !== 'message') return;
+  broadcast(`${event.client}:${event.to}`, { type: 'peer-message', from: event.from, reply: !!event.replyTo });
+  if (event.deliveredDirectly) return;
+  const recipient = sessions.get(`${event.client}:${event.to}`);
+  if (!recipient?.proc) {
+    broadcast(`${event.client}:${event.from}`, { type: 'error', error: `${event.to} is unavailable for the linked message.` });
+    return;
+  }
+  const prompt = event.replyTo
+    ? `Buddy link: ${event.from} replied to your message. Call buddy_peer.receive now, then give the user your conclusion. Continue the exchange only if you need a specific follow-up.`
+    : `Buddy link: ${event.from} sent you a message. Call buddy_peer.receive now. Reply directly using buddy_peer.send; Buddy matches your answer automatically. If you cannot answer, send that reason as your reply.`;
+  setTimeout(() => recipient.proc?.write(`\x1b[200~${prompt}\x1b[201~\r`), 50);
 }
 function flushPending(key) {
   const item = pending.get(key);
@@ -148,17 +173,23 @@ wss.on('connection', (ws, req, url) => {
   const allowedEffort = engine === 'codex' ? ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] : ['low', 'medium', 'high', 'xhigh', 'max'];
   if (effort && !allowedEffort.includes(effort)) return ws.close(1008, 'Invalid effort');
   let state;
-  try { state = terminal(key, engine, workspace(url.searchParams.get('workspace')), model, effort); }
+  try { state = terminal(key, client, engine, workspace(url.searchParams.get('workspace')), model, effort); }
   catch (error) { ws.send(JSON.stringify({ type: 'error', error: error.message })); return ws.close(); }
   clearTimeout(state.idleTimer);
   state.clients.add(ws);
   ws.send(JSON.stringify({ type: 'data', data: state.buffer }));
   ws.send(JSON.stringify({ type: 'session', running: !!state.proc }));
+  ws.send(JSON.stringify({ type: 'link', linked: bridge.linked(client) }));
   ws.on('message', raw => {
     try {
       const msg = JSON.parse(String(raw));
       if (msg.type === 'input' && typeof msg.data === 'string') state.proc?.write(msg.data.slice(0, 20000));
       if (msg.type === 'resize') state.proc?.resize(Math.max(20, Math.min(300, Number(msg.cols) || 90)), Math.max(8, Math.min(100, Number(msg.rows) || 28)));
+      if (msg.type === 'link' && typeof msg.linked === 'boolean') {
+        if (msg.linked && ['codex', 'claude'].some(role => !sessions.get(`${client}:${role}`)?.proc))
+          return ws.send(JSON.stringify({ type: 'error', error: 'Connect both terminals before linking them.' }));
+        bridge.setLinked(client, msg.linked);
+      }
       if (msg.type === 'prompt' && typeof msg.text === 'string') {
         if (!state.proc) { ws.send(JSON.stringify({ type: 'error', error: 'CLI has exited. Reconnect the pane before sending.' })); return; }
         const selected = String(msg.text).slice(0, 30000);
@@ -186,6 +217,6 @@ wss.on('connection', (ws, req, url) => {
 });
 
 server.listen(port, '127.0.0.1', () => console.log(`Buddy workspace: http://127.0.0.1:${port}`));
-const shutdown = () => { for (const key of pending.keys()) flushPending(key); for (const s of sessions.values()) s.proc?.kill(); process.exit(0); };
+const shutdown = () => { for (const key of pending.keys()) flushPending(key); for (const s of sessions.values()) s.proc?.kill(); bridge.close(); process.exit(0); };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

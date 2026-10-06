@@ -24,7 +24,7 @@ const state = {
   workspace: localStorage.getItem('buddy-workspace') || '',
   settings: { codex: savedSettings('codex'), claude: savedSettings('claude') }, modelDialogEngine: 'codex',
   vault: { mode: 'none', name: '', path: '', remote: '', wiki: false }, vaultSyncOk: true,
-  running: { codex: false, claude: false }, retries: { codex: 0, claude: 0 }
+  running: { codex: false, claude: false }, retries: { codex: 0, claude: 0 }, linked: false
 };
 const toast = (message, error = false) => {
   const el = $('toast'); el.textContent = message; el.classList.toggle('error', error); el.classList.add('show');
@@ -158,6 +158,13 @@ function connect(engine, retry = false) {
     const msg = JSON.parse(event.data);
     if (msg.type === 'data') state.terms[engine].write(msg.data);
     if (msg.type === 'error') toast(`${engine}: ${msg.error}`, true);
+    if (msg.type === 'link') {
+      const changed = state.linked !== !!msg.linked;
+      state.linked = !!msg.linked;
+      renderLink();
+      if (changed) toast(state.linked ? 'Codex and Claude Code linked' : 'Codex and Claude Code unlinked');
+    }
+    if (msg.type === 'peer-timeout') toast(`${msg.peer === 'codex' ? 'Codex' : 'Claude Code'} ${msg.reason === 'peer disconnected' ? 'disconnected before replying' : 'did not reply to the linked message'}. You can retry.`, true);
     if (msg.type === 'session') { state.running[engine] = !!msg.running; $(`${engine}State`).textContent = msg.running ? 'Ready' : 'Exited'; updateConnection(); }
     if (msg.type === 'exit') {
       state.running[engine] = false;
@@ -195,6 +202,18 @@ function updateConnection() {
     indicator.title = `${engine === 'codex' ? 'Codex' : 'Claude Code'}: ${indicator.textContent}`;
     indicator.setAttribute('aria-label', indicator.title);
   }
+}
+function renderLink() {
+  const button = $('linkAgents');
+  button.setAttribute('aria-pressed', String(state.linked));
+  button.setAttribute('aria-label', state.linked ? 'Unlink Codex and Claude Code' : 'Link Codex and Claude Code');
+  button.title = state.linked ? 'Unlink Codex and Claude Code' : 'Link Codex and Claude Code';
+  document.querySelector('.pane-grid').classList.toggle('linked', state.linked);
+}
+function toggleLink() {
+  if (['codex', 'claude'].some(engine => !state.running[engine] || state.sockets[engine]?.readyState !== WebSocket.OPEN))
+    return toast('Connect both terminals before linking them.', true);
+  state.sockets.codex.send(JSON.stringify({ type: 'link', linked: !state.linked }));
 }
 
 function chooseTarget(target) {
@@ -323,10 +342,11 @@ async function sendPrompt() {
   const context = state.context ? `\n\n<obsidian-context project="${state.project}">\n${state.context}\n</obsidian-context>\n\nUse this as project reference.` : '';
   const wiki = state.vault.mode !== 'none' && state.vault.wiki
     ? `\n\n<knowledge-wiki path="${state.vault.path}/Knowledge">\nFor knowledge-base tasks, read Knowledge/AGENTS.md before writing. Preserve Knowledge/raw sources; maintain linked pages in Knowledge/wiki, including its index and log. Do not change the wiki for unrelated tasks.\n</knowledge-wiki>` : '';
+  const link = state.linked ? '\n\n<Buddy-link>Codex and Claude Code are linked. When discussing this task with the other agent would help, use buddy_peer.send to contact it; Buddy wakes the peer. Use buddy_peer.receive to wait for its reply. Answer received messages with buddy_peer.send; Buddy matches a single pending reply automatically. Give the user a clear outcome and say if the peer did not answer.</Buddy-link>' : '';
   for (const engine of targets) {
     const commands = state.commands[engine];
     const prefix = commands.map(c => c.invocation).join('\n');
-    state.sockets[engine].send(JSON.stringify({ type: 'prompt', text: `${prefix ? `${prefix}\n\n` : ''}${text}${context}${wiki}`, project: state.project, commands: commands.map(c => c.invocation) }));
+    state.sockets[engine].send(JSON.stringify({ type: 'prompt', text: `${prefix ? `${prefix}\n\n` : ''}${text}${context}${wiki}${link}`, project: state.project, commands: commands.map(c => c.invocation) }));
   }
   $('prompt').value = '';
   for (const engine of targets) state.commands[engine] = [];
@@ -394,6 +414,7 @@ function acceptImprovement() {
 
 function bind() {
   document.querySelectorAll('[data-target]').forEach(button => button.onclick = () => chooseTarget(button.dataset.target));
+  $('linkAgents').onclick = toggleLink;
   document.querySelectorAll('[data-skill-engine]').forEach(button => button.onclick = () => { state.skillEngine = button.dataset.skillEngine; state.selectedSkill = null; document.querySelectorAll('[data-skill-engine]').forEach(b => b.classList.toggle('active', b === button)); renderSkills(); });
   $('applyWorkspace').onclick = async () => { state.workspace = $('workspace').value.trim(); localStorage.setItem('buddy-workspace', state.workspace); await refreshCatalog(); for (const engine of ['codex', 'claude']) { state.terms[engine].clear(); connect(engine); } };
   $('project').onchange = refreshContext; $('refreshContext').onclick = loadProjects;
