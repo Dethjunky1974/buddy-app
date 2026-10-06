@@ -23,7 +23,7 @@
 .pane{background:linear-gradient(155deg,#202526,#181b1d 38%);border-color:#3d4543;border-radius:14px;box-shadow:0 6px 12px #0007,inset 0 1px #ffffff0c}
 .pane-header{min-height:58px;padding:10px 13px;background:linear-gradient(180deg,#242a29,#1c2120);border-bottom-color:#3b4441}
 .pane-name{min-width:0}.pane-name>div:last-child{min-width:0}.pane-name strong{font-size:12px}.pane-name small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pane-actions{gap:7px;flex:none}.pane-state{display:inline-block!important;flex:none;width:9px;height:9px;overflow:hidden;border-radius:50%;font-size:0;line-height:0;color:transparent;background:#a9c9ac;box-shadow:0 1px 2px #0009}.pane-state.offline{background:#dc918b;box-shadow:0 1px 2px #0009}
+.pane-actions{gap:7px;flex:none}.pane-state{display:inline-block!important;flex:none;width:9px;height:9px;overflow:hidden;border-radius:50%;font-size:0;line-height:0;color:transparent;background:#78e6a4;box-shadow:0 0 0 2px #78e6a426,0 0 9px #78e6a466,0 1px 2px #0009}.pane-state.offline{background:#ff8984;box-shadow:0 0 0 2px #ff898426,0 0 9px #ff898466,0 1px 2px #0009}
 .skills-button,.model-button,.icon-button{height:30px;border:1px solid #48524f;border-radius:8px;background:linear-gradient(180deg,#303735,#252c2a);color:#d9e0d9;box-shadow:inset 0 1px #ffffff16,0 2px 5px #0004;transition:background .16s var(--ease),border-color .16s var(--ease),transform .12s var(--ease)}
 .skills-button,.model-button{padding:0 10px;font-size:11px;font-weight:620;white-space:nowrap;max-width:none}
 .skills-button{border-color:#645848;background:linear-gradient(180deg,#39342d,#2c2924);color:#e5c29a}
