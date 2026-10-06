@@ -159,10 +159,8 @@ function connect(engine, retry = false) {
     if (msg.type === 'data') state.terms[engine].write(msg.data);
     if (msg.type === 'error') toast(`${engine}: ${msg.error}`, true);
     if (msg.type === 'link') {
-      const changed = state.linked !== !!msg.linked;
       state.linked = !!msg.linked;
       renderLink();
-      if (changed) toast(state.linked ? 'Codex and Claude Code linked' : 'Codex and Claude Code unlinked');
     }
     if (msg.type === 'peer-timeout') toast(`${msg.peer === 'codex' ? 'Codex' : 'Claude Code'} ${msg.reason === 'peer disconnected' ? 'disconnected before replying' : 'did not reply to the linked message'}. You can retry.`, true);
     if (msg.type === 'session') { state.running[engine] = !!msg.running; $(`${engine}State`).textContent = msg.running ? 'Ready' : 'Exited'; updateConnection(); }
