@@ -363,26 +363,28 @@ async function saveVaultSettings() {
   finally { $('saveVault').disabled = false; }
 }
 
-let selectionRange;
+let draftBeforeImprove;
 async function improve() {
   const input = $('prompt');
-  const start = input.selectionStart, end = input.selectionEnd;
-  if (start === end) return toast('Highlight the part of your prompt to improve.', true);
-  const selection = input.value.slice(start, end);
-  selectionRange = { start, end, original: selection };
+  const original = input.value;
+  const selection = original.trim();
+  if (!selection) return toast('Write a prompt first.', true);
+  if (selection.length > 6000) return toast('Keep the prompt under 6,000 characters to improve it.', true);
   const engine = $('improveEngine')?.value || 'codex';
   $('improvePrompt').disabled = true; $('improvePrompt').textContent = 'Improving…';
   try {
     const data = await api('/api/improve', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ selection, engine, workspace: state.workspace }) });
-    $('originalText').textContent = selection; $('improvedText').value = data.improved;
+    draftBeforeImprove = original;
+    $('originalText').textContent = original; $('improvedText').value = data.improved;
     $('improveDialog').showModal();
   } catch (error) { toast(`Could not improve prompt: ${error.message}`, true); }
-  finally { $('improvePrompt').disabled = false; $('improvePrompt').innerHTML = '<span class="tool-icon">✦</span> Improve selection'; }
+  finally { $('improvePrompt').disabled = false; $('improvePrompt').innerHTML = '<span class="tool-icon">✦</span> Improve prompt'; }
 }
 function acceptImprovement() {
   const input = $('prompt');
-  if (!selectionRange || input.value.slice(selectionRange.start, selectionRange.end) !== selectionRange.original) return toast('Prompt changed while improving. Try again.', true);
-  input.value = input.value.slice(0, selectionRange.start) + $('improvedText').value + input.value.slice(selectionRange.end);
+  if (draftBeforeImprove === undefined || input.value !== draftBeforeImprove) return toast('Prompt changed while improving. Try again.', true);
+  input.value = $('improvedText').value;
+  draftBeforeImprove = undefined;
   $('improveDialog').close(); input.focus();
 }
 
