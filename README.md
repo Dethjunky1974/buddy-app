@@ -49,11 +49,11 @@ Buddy never needs your vault to run the CLIs. With a vault connected, selecting 
 
 ## What is inside
 
-- **One composer, three destinations:** Codex, Claude Code, or both.
+- **One composer, three destinations:** Codex, Claude Code, or both. Enter sends; Shift+Enter adds a new line.
 - **Real interactive terminals:** native CLI prompts, permissions, and keyboard controls remain available.
 - **Command library:** scans installed Codex and Claude Code skills, plugins, and project commands; choose an invocation before sending.
 - **Prompt improvement:** highlight text, improve it with Codex or Claude Code, then review the rewrite before accepting.
-- **Independent models:** set a model ID and reasoning effort per pane. Changing either starts a new CLI session.
+- **Independent models:** choose a specific Codex or Claude version from clear model cards, or enter any full model ID, then set effort per pane. Changing either starts a new CLI session.
 - **Optional Obsidian context:** use your own named vault locally or across Macs through GitHub.
 
 Buddy listens only on `127.0.0.1` and uses your existing CLI logins. It stores vault settings locally in `~/Library/Application Support/Buddy/settings.json`; it does not store GitHub or AI API tokens. The app's terminal sessions can still access the files permitted to your signed-in CLIs, so review their normal trust prompts.

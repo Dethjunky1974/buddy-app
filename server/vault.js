@@ -22,6 +22,15 @@ const git = (cwd, ...args) => run('git', args, cwd);
 const errorText = error => String(error.stderr || error.message).trim().slice(-1000);
 const expandPath = value => path.resolve(String(value || '').replace(/^~(?=\/|$)/, home));
 
+function publishOwnPending(vaultPath, branch, remote) {
+  const commits = git(vaultPath, 'log', `${remote}..HEAD`, '--format=%B%x00').split('\0').map(text => text.trim()).filter(Boolean);
+  const files = git(vaultPath, 'diff', '--name-only', `${remote}..HEAD`).trim().split('\n').filter(Boolean);
+  if (!commits.length || !commits.every(text => /^Sync-Actor: buddy$/m.test(text))) return false;
+  if (!files.length || !files.every(file => file.startsWith('Tooling/Buddy/'))) return false;
+  git(vaultPath, 'push', 'origin', `HEAD:${branch}`);
+  return true;
+}
+
 export function configureVault(input) {
   const mode = String(input.mode || 'none');
   if (!['none', 'local', 'github'].includes(mode)) throw new Error('Choose no vault, local, or GitHub.');
@@ -71,6 +80,10 @@ export function syncVault() {
     if (git(settings.path, 'status', '--porcelain')) return { ok: false, status: 'local_changes_pending', error: 'Vault has unpublished local changes. Commit or sync them before Buddy writes.' };
     if (head === remote) return { ok: true, status: 'up_to_date', head };
     const common = git(settings.path, 'merge-base', head, remote);
+    if (common === remote) {
+      if (!publishOwnPending(settings.path, branch, remote)) return { ok: false, status: 'local_commits_pending', error: 'Vault has local commits that need review before Buddy writes.' };
+      return { ok: true, status: 'published_pending', head };
+    }
     if (common !== head) return { ok: false, status: 'diverged', error: 'Vault history diverged. Reconcile the Git checkout before Buddy writes.' };
     git(settings.path, 'merge', '--ff-only', remote);
     return { ok: true, status: 'pulled', head: remote };

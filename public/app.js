@@ -3,13 +3,28 @@ import { FitAddon } from '/vendor/fit.mjs';
 
 const $ = id => document.getElementById(id);
 const savedSettings = engine => { try { return JSON.parse(localStorage.getItem(`buddy-${engine}-settings`) || '{}'); } catch { return {}; } };
+const claudeModels = [
+  { name: 'Fable 5.1', id: 'claude-fable-5-1', description: 'For your toughest challenges' },
+  { name: 'Opus 5.5', id: 'claude-opus-5-5', description: 'For complex work and everyday tasks' },
+  { name: 'Sonnet 5.5', id: 'claude-sonnet-5-5', description: 'Most efficient for simpler tasks' },
+  { name: 'Haiku 4.5', id: 'claude-haiku-4-5-20251001', description: 'Fastest for quick answers' }
+];
+const codexModels = [
+  { name: 'GPT-6.1 Sol', id: 'gpt-6.1-sol', description: 'Latest workhorse for coding and everyday work' },
+  { name: 'GPT-6 Astra', id: 'gpt-6-astra', description: 'Frontier intelligence for demanding work' },
+  { name: 'GPT-6 Sol', id: 'gpt-6-sol', description: 'Previous generation workhorse model' },
+  { name: 'GPT-6 Luna', id: 'gpt-6-luna', description: 'Fast model for simpler tasks' }
+];
+const tabId = sessionStorage.getItem('buddy-tab-id') || crypto.randomUUID();
+sessionStorage.setItem('buddy-tab-id', tabId);
 const state = {
   target: 'codex', skillEngine: 'codex', catalog: { codex: [], claude: [] }, selectedSkill: null,
   commands: { codex: [], claude: [] }, sockets: {}, terms: {}, fit: {}, context: '',
   project: localStorage.getItem('buddy-project') || '',
   workspace: localStorage.getItem('buddy-workspace') || '',
   settings: { codex: savedSettings('codex'), claude: savedSettings('claude') }, modelDialogEngine: 'codex',
-  vault: { mode: 'none', name: '', path: '', remote: '' }, vaultSyncOk: true
+  vault: { mode: 'none', name: '', path: '', remote: '' }, vaultSyncOk: true,
+  running: { codex: false, claude: false }
 };
 const toast = (message, error = false) => {
   const el = $('toast'); el.textContent = message; el.classList.toggle('error', error); el.classList.add('show');
@@ -46,6 +61,11 @@ async function loadProjects() {
   try {
     const data = await api('/api/projects');
     setVaultStatus(data.sync);
+    if (!data.sync?.ok) {
+      state.context = '';
+      $('contextFiles').textContent = 'Vault sync needs attention. You can still send without project context.';
+      return;
+    }
     const select = $('project');
     select.replaceChildren(new Option('Select a project', ''));
     for (const p of data.projects) select.add(new Option(p, p));
@@ -79,7 +99,7 @@ async function refreshContext() {
   $('contextFiles').replaceChildren();
   if (data.paths?.length) for (const file of data.paths) {
     const row = document.createElement('div'); row.className = 'context-file'; row.textContent = `${state.project} / ${file}`; $('contextFiles').append(row);
-  } else $('contextFiles').textContent = data.error || 'No hot.md or index.md found.';
+  } else $('contextFiles').textContent = !data.sync?.ok ? 'Vault sync needs attention. You can still send without project context.' : data.error || 'No hot.md or index.md found.';
 }
 async function refreshCatalog() {
   try { state.catalog = await api(`/api/catalog?workspace=${encodeURIComponent(state.workspace)}`); renderSkills(); return true; }
@@ -97,17 +117,20 @@ function createTerminal(engine) {
 }
 function connect(engine) {
   state.sockets[engine]?.close();
+  state.running[engine] = false;
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const settings = state.settings[engine];
-  const ws = new WebSocket(`${scheme}//${location.host}/terminal?engine=${engine}&workspace=${encodeURIComponent(state.workspace)}&model=${encodeURIComponent(settings.model || '')}&effort=${encodeURIComponent(settings.effort || '')}`);
+  const ws = new WebSocket(`${scheme}//${location.host}/terminal?client=${encodeURIComponent(tabId)}&engine=${engine}&workspace=${encodeURIComponent(state.workspace)}&model=${encodeURIComponent(settings.model || '')}&effort=${encodeURIComponent(settings.effort || '')}`);
   state.sockets[engine] = ws;
   $(`${engine}State`).textContent = 'Connecting';
-  ws.onopen = () => { $(`${engine}State`).textContent = 'Ready'; resize(engine); updateConnection(); };
+  ws.onopen = () => { if (state.sockets[engine] === ws) resize(engine); };
   ws.onmessage = event => {
+    if (state.sockets[engine] !== ws) return;
     const msg = JSON.parse(event.data);
     if (msg.type === 'data') state.terms[engine].write(msg.data);
     if (msg.type === 'error') toast(`${engine}: ${msg.error}`, true);
-    if (msg.type === 'exit') { $(`${engine}State`).textContent = `Exited ${msg.exitCode}`; updateConnection(); }
+    if (msg.type === 'session') { state.running[engine] = !!msg.running; $(`${engine}State`).textContent = msg.running ? 'Ready' : 'Exited'; updateConnection(); }
+    if (msg.type === 'exit') { state.running[engine] = false; $(`${engine}State`).textContent = `Exited ${msg.exitCode}`; updateConnection(); }
     if (msg.type === 'save') {
       const r = msg.result;
       if (r.queued) $('retrySaves').hidden = false;
@@ -116,6 +139,7 @@ function connect(engine) {
   };
   ws.onclose = () => {
     if (state.sockets[engine] !== ws) return;
+    state.running[engine] = false;
     $(`${engine}State`).textContent = 'Reconnecting';
     updateConnection();
     setTimeout(() => { if (state.sockets[engine] === ws) connect(engine); }, 1500);
@@ -126,8 +150,8 @@ function resize(engine) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
 }
 function updateConnection() {
-  const ready = ['codex', 'claude'].filter(e => state.sockets[e]?.readyState === WebSocket.OPEN).length;
-  $('connectionBadge').innerHTML = `<i></i>${ready === 2 ? 'Both connected' : `${ready} of 2 connected`}`;
+  const ready = ['codex', 'claude'].filter(e => state.sockets[e]?.readyState === WebSocket.OPEN && state.running[e]).length;
+  $('connectionBadge').innerHTML = `<i></i>${ready === 2 ? 'Both ready' : `${ready} of 2 ready`}`;
   $('connectionBadge').classList.toggle('offline', ready < 2);
 }
 
@@ -192,17 +216,37 @@ function renderChips() {
 
 function updateModelLabel(engine) {
   const { model, effort } = state.settings[engine];
-  $(`${engine}ModelLabel`).textContent = [model || 'CLI default', effort].filter(Boolean).join(' · ');
+  const modelName = (engine === 'claude' ? claudeModels : codexModels).find(item => item.id === model)?.name || model;
+  $(`${engine}ModelLabel`).textContent = [modelName || 'CLI default', effort].filter(Boolean).join(' · ');
+}
+function renderModelChoices() {
+  const models = state.modelDialogEngine === 'claude' ? claudeModels : codexModels;
+  const selected = $('modelInput').value.trim();
+  $('modelChoices').replaceChildren();
+  for (const model of models) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'model-choice';
+    button.setAttribute('aria-pressed', String(selected === model.id));
+    const title = document.createElement('strong'); title.textContent = model.name;
+    const description = document.createElement('small'); description.textContent = model.description;
+    const check = document.createElement('span'); check.textContent = selected === model.id ? '✓' : '';
+    button.append(title, description, check);
+    button.onclick = () => { $('modelInput').value = model.id; renderModelChoices(); };
+    $('modelChoices').append(button);
+  }
 }
 function openModel(engine) {
   state.modelDialogEngine = engine;
   $('modelDialogTitle').textContent = `${engine === 'codex' ? 'Codex' : 'Claude Code'} model`;
-  $('modelSuggestions').replaceChildren();
-  const models = engine === 'codex' ? ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna'] : ['sonnet', 'opus', 'fable'];
-  for (const name of models) $('modelSuggestions').append(new Option(name, name));
+  $('modelHelp').textContent = 'Choose a version below, or enter any full model ID.';
+  $('modelInput').placeholder = 'Full model ID or CLI default';
+  $('modelInput').removeAttribute('list');
   $('effortInput').replaceChildren(new Option('CLI default', ''));
   for (const level of engine === 'codex' ? ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] : ['low', 'medium', 'high', 'xhigh', 'max']) $('effortInput').add(new Option(level, level));
   $('modelInput').value = state.settings[engine].model || '';
+  $('modelChoices').hidden = false;
+  renderModelChoices();
   $('effortInput').value = state.settings[engine].effort || '';
   $('modelDialog').showModal();
 }
@@ -223,12 +267,16 @@ function applyModel() {
 async function sendPrompt() {
   const text = $('prompt').value.trim();
   if (!text) return toast('Write a prompt first.', true);
+  if (state.sending) return;
+  state.sending = true;
+  $('sendPrompt').disabled = true;
+  try {
   if (state.vault.mode !== 'none' && state.project) {
-    try { await refreshContext(); } catch (error) { return toast(`Vault context unavailable: ${error.message}`, true); }
-    if (!state.vaultSyncOk) return toast('Vault sync needs attention before using this project context.', true);
-  }
+    try { await refreshContext(); } catch (error) { state.context = ''; toast(`Sending without vault context: ${error.message}`, true); }
+    if (!state.vaultSyncOk) { state.context = ''; toast('Sending without vault context while sync needs attention.', true); }
+  } else state.context = '';
   const targets = state.target === 'both' ? ['codex', 'claude'] : [state.target];
-  if (targets.some(e => state.sockets[e]?.readyState !== WebSocket.OPEN)) return toast('A selected terminal is disconnected.', true);
+  if (targets.some(e => state.sockets[e]?.readyState !== WebSocket.OPEN || !state.running[e])) return toast('A selected CLI has exited or is disconnected. Reconnect its pane first.', true);
   const context = state.context ? `\n\n<obsidian-context project="${state.project}">\n${state.context}\n</obsidian-context>\n\nUse this as project reference.` : '';
   for (const engine of targets) {
     const commands = state.commands[engine];
@@ -237,7 +285,8 @@ async function sendPrompt() {
   }
   $('prompt').value = '';
   for (const engine of targets) state.commands[engine] = [];
-  renderChips(); toast(`Sent to ${targets.map(e => e === 'codex' ? 'Codex' : 'Claude Code').join(' and ')}`);
+  renderChips(); toast(`Sent to ${targets.map(e => e === 'codex' ? 'Codex' : 'Claude Code').join(' and ')}${state.project && !state.context ? ' without current vault context' : ''}`);
+  } finally { state.sending = false; $('sendPrompt').disabled = false; }
 }
 
 function openVaultSettings() {
@@ -298,7 +347,7 @@ function bind() {
   document.querySelectorAll('[data-target]').forEach(button => button.onclick = () => chooseTarget(button.dataset.target));
   document.querySelectorAll('[data-skill-engine]').forEach(button => button.onclick = () => { state.skillEngine = button.dataset.skillEngine; state.selectedSkill = null; document.querySelectorAll('[data-skill-engine]').forEach(b => b.classList.toggle('active', b === button)); renderSkills(); });
   $('applyWorkspace').onclick = async () => { state.workspace = $('workspace').value.trim(); localStorage.setItem('buddy-workspace', state.workspace); await refreshCatalog(); for (const engine of ['codex', 'claude']) { state.terms[engine].clear(); connect(engine); } };
-  $('project').onchange = refreshContext; $('refreshContext').onclick = refreshContext;
+  $('project').onchange = refreshContext; $('refreshContext').onclick = loadProjects;
   $('configureVault').onclick = openVaultSettings;
   $('vaultModeInput').onchange = updateVaultFields;
   $('closeVault').onclick = $('cancelVault').onclick = () => $('vaultDialog').close();
@@ -308,15 +357,20 @@ function bind() {
   $('skillSearch').oninput = renderSkills;
   $('skillSelect').onchange = () => { state.selectedSkill = $('skillSelect').value; renderSkills(); };
   $('sendPrompt').onclick = sendPrompt;
+  $('prompt').onkeydown = event => {
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+    event.preventDefault(); event.stopPropagation(); sendPrompt();
+  };
   $('improvePrompt').onclick = improve;
   $('closeImprove').onclick = $('cancelImprove').onclick = () => $('improveDialog').close();
   $('acceptImprove').onclick = acceptImprovement;
   document.querySelectorAll('[data-model]').forEach(button => button.onclick = () => openModel(button.dataset.model));
   $('closeModel').onclick = $('cancelModel').onclick = () => $('modelDialog').close();
   $('applyModel').onclick = applyModel;
+  $('modelInput').oninput = renderModelChoices;
   document.querySelectorAll('[data-restart]').forEach(button => button.onclick = () => connect(button.dataset.restart));
   document.addEventListener('keydown', event => {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); sendPrompt(); }
+    if (!event.defaultPrevented && (event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); sendPrompt(); }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openSkills(); }
   });
 }

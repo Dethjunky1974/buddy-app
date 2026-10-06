@@ -11,3 +11,5 @@
 #vaultDialog .model-fields>div{display:flex;flex-direction:column;gap:7px;margin-top:7px}#vaultDialog .model-fields>div[hidden]{display:none}#vaultModeHelp{margin:0 0 2px}
 
 .mark{width:55px;height:55px;flex:none;border-radius:14px;overflow:hidden}.mark img{display:block;width:100%;height:100%;object-fit:cover}
+
+.model-modal .modal-panel{width:min(520px,calc(100vw - 30px));max-height:calc(100dvh - 30px);overflow:auto}.model-choices{display:grid;gap:6px}.model-choices[hidden]{display:none}.model-choice{position:relative;display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;padding:11px 40px 11px 12px;color:var(--text);background:#202526;border:1px solid #3c4643;border-radius:9px}.model-choice:hover{background:#2c3431;border-color:#8d745a}.model-choice[aria-pressed=true]{border-color:var(--accent);background:#332c24}.model-choice strong{font-size:13px;font-weight:650}.model-choice small{font-size:11px;color:var(--muted)}.model-choice>span{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--accent)}

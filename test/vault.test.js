@@ -44,6 +44,18 @@ test('optional, local, and GitHub-backed vault modes keep records in the right p
   assert.equal(git(folder, 'rev-parse', 'HEAD'), git(folder, 'rev-parse', 'origin/main'));
   assert.equal(git(folder, 'log', '-1', '--format=%(trailers:key=Sync-Actor,valueonly)'), 'buddy');
 
+  const rejectPush = path.join(remote, 'hooks/pre-receive');
+  fs.writeFileSync(rejectPush, '#!/bin/sh\nexit 1\n');
+  fs.chmodSync(rejectPush, 0o755);
+  const unpublished = vault.saveRecord(payload);
+  assert.equal(unpublished.saved, true);
+  assert.equal(unpublished.published, false);
+  fs.unlinkSync(rejectPush);
+  const recovered = vault.syncVault();
+  assert.equal(recovered.ok, true, recovered.error);
+  assert.equal(recovered.status, 'published_pending');
+  assert.equal(git(folder, 'rev-parse', 'HEAD'), git(folder, 'rev-parse', 'origin/main'));
+
   fs.writeFileSync(path.join(folder, 'unpublished.md'), 'Work in progress');
   const queued = vault.saveRecord(payload);
   assert.equal(queued.queued, true);
