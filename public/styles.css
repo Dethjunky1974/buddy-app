@@ -10,4 +10,4 @@
 .skill-select-label{display:block;margin-bottom:7px;color:#aeb7b1;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}#skillSelect{width:100%;min-height:36px;margin-bottom:20px;padding:7px 10px;border:1px solid #424b48;border-radius:8px;background:#111415;color:var(--text);font-size:12px}#skillSelect:disabled{opacity:.55}
 #vaultDialog .model-fields>div{display:flex;flex-direction:column;gap:7px;margin-top:7px}#vaultDialog .model-fields>div[hidden]{display:none}#vaultModeHelp{margin:0 0 2px}
 
-.mark{width:27px;height:27px;border-radius:7px;overflow:hidden}.mark img{display:block;width:100%;height:100%;object-fit:cover}
+.mark{width:35px;height:35px;flex:none;border-radius:9px;overflow:hidden}.mark img{display:block;width:100%;height:100%;object-fit:cover}

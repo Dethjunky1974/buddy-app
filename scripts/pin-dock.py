@@ -10,9 +10,8 @@ app = pathlib.Path(sys.argv[1]).resolve()
 support = pathlib.Path(sys.argv[2])
 original = subprocess.check_output(["defaults", "export", "com.apple.dock", "-"])
 settings = plistlib.loads(original)
-apps = settings.get("persistent-apps", [])
-if any(item.get("tile-data", {}).get("bundle-identifier") == "app.buddy.local" for item in apps):
-    sys.exit(0)
+apps = [item for item in settings.get("persistent-apps", [])
+        if item.get("tile-data", {}).get("bundle-identifier") != "app.buddy.local"]
 
 support.joinpath("dock-before-buddy.plist").write_bytes(original)
 tile = {
