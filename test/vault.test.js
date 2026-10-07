@@ -21,6 +21,9 @@ test('optional, local, and GitHub-backed vault modes keep records in the right p
   assert.equal(localOnly.saved, true);
   assert.equal(localOnly.location, 'local');
   assert.match(fs.readFileSync(localOnly.file, 'utf8'), /Check the layout/);
+  const unassignedLocal = vault.saveRecord({ ...payload, project: '' });
+  assert.match(path.basename(unassignedLocal.file), /^local-unassigned-/);
+  assert.notEqual(unassignedLocal.file, localOnly.file);
 
   const folder = path.join(temp, 'My Vault');
   const configured = vault.configureVault({ mode: 'local', name: 'Studio Notes', path: folder, wiki: true });
@@ -45,6 +48,9 @@ test('optional, local, and GitHub-backed vault modes keep records in the right p
   const localVault = vault.saveRecord(payload);
   assert.equal(localVault.location, 'vault');
   assert.equal(localVault.saved, true);
+  const unassignedVault = vault.saveRecord({ ...payload, project: '' });
+  assert.match(path.basename(unassignedVault.file), /^unassigned-/);
+  assert.match(fs.readFileSync(path.join(folder, 'Tooling/Buddy/index.md'), 'utf8'), /\[\[unassigned-/);
 
   const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   const remote = path.join(temp, 'remote.git');

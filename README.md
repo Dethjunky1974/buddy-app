@@ -64,7 +64,7 @@ Add sources to `Knowledge/raw/`, then ask either agent to ingest them. The schem
 
 For GitHub mode, install Git, create a **private repository with an initial commit**, and sign in to Git on each Mac. Paste its URL into Buddy if it needs to clone a new folder; for an existing checkout, its `origin` remote is enough. Use a separate checkout on each Mac and choose GitHub mode on both. Buddy refuses to overwrite dirty or diverged Git state. When a save cannot safely publish, it queues the record locally for retry.
 
-Buddy never needs your vault to run the CLIs. With a vault connected, selecting a project adds its current `hot.md` and `index.md` to the prompt. Session records include the prompt and a short terminal excerpt; keep sensitive text out of the composer if you do not want it recorded in your vault.
+Buddy never needs your vault to run the CLIs. With a vault connected, selecting a project adds its current `hot.md` and `index.md` to the prompt. Buddy keeps unassigned sessions in a separate machine-named file; with a vault, its `Tooling/Buddy/index.md` links to that file. Without a vault, it stays under Buddy's local data folder. Session records include the prompt and a short terminal excerpt; keep sensitive text out of the composer if you do not want it recorded in your vault.
 
 Use the **+** beside the project picker to create a project directly in Buddy. It starts with `index.md` and `hot.md`; GitHub vaults publish the new project to your shared repository.
 

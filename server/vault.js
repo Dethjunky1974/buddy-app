@@ -203,15 +203,17 @@ export function saveRecord({ project, engine, prompt, output, commands }) {
   }
   const inVault = settings.mode !== 'none';
   const base = inVault ? path.join(settings.path, 'Tooling/Buddy') : dataDir;
-  const record = path.join(base, inVault ? `sessions-${machine}.md` : `local-sessions-${machine}.md`);
+  const unassigned = !project;
+  const stem = `${unassigned ? 'unassigned' : 'sessions'}-${machine}`;
+  const record = path.join(base, `${inVault ? '' : 'local-'}${stem}.md`);
   const index = path.join(base, 'index.md');
   const now = new Date().toISOString();
   const clean = value => String(value || '').replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '').replace(/\u001b\][^\u0007]*(?:\u0007|\u001b\\)/g, '').trim();
   try {
     fs.mkdirSync(base, { recursive: true });
-    if (!fs.existsSync(record)) fs.writeFileSync(record, `# Buddy sessions — ${machine}\n\n`);
+    if (!fs.existsSync(record)) fs.writeFileSync(record, `# Buddy ${unassigned ? 'unassigned sessions' : 'sessions'} — ${machine}\n\n`);
     if (inVault && !fs.existsSync(index)) fs.writeFileSync(index, `# Buddy sessions\n\n`);
-    if (inVault && !fs.readFileSync(index, 'utf8').includes(`[[sessions-${machine}]]`)) fs.appendFileSync(index, `- [[sessions-${machine}]]\n`);
+    if (inVault && !fs.readFileSync(index, 'utf8').includes(`[[${stem}]]`)) fs.appendFileSync(index, `- [[${stem}]]\n`);
     const entry = `## ${now} · ${project || 'No project'} · ${engine}\n\n**Commands:** ${commands?.length ? commands.join(', ') : 'none'}\n\n### Prompt\n\n${clean(prompt).slice(0, 12000)}\n\n### Terminal excerpt\n\n\`\`\`text\n${clean(output).slice(-6000).replace(/\`\`\`/g, '\`\` \`')}\n\`\`\`\n\n`;
     fs.appendFileSync(record, entry);
     if (settings.mode !== 'github') return { saved: true, location: inVault ? 'vault' : 'local', file: record };
